@@ -53,8 +53,10 @@ export default function Home() {
         <div className="hero-section">
           <div className="title-container">
             <h1 className="gradient-text">
-              <span className="gradient-primary">Syllexa</span> AI
+              <span className="gradient-primary">Syllexa</span>
+              <span className="ai-highlight"> AI</span>
             </h1>
+
             <div className="animated-underline"></div>
           </div>
 
