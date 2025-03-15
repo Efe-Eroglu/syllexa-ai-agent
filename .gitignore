@@ -1,0 +1,71 @@
+# Genel gereksiz dosyalar
+.DS_Store
+Thumbs.db
+
+# Ortam değişkenleri
+.env
+config.env
+
+# Python (Flask Backend)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+instance/
+venv/
+.mypy_cache/
+.pytest_cache/
+.db.sqlite3
+.wsgi.py
+
+# Flask ve veritabanı
+*.sqlite3
+migrations/
+*.log
+
+# Node.js (React Frontend)
+node_modules/
+npm-debug.log*
+yarn-error.log
+.vscode/
+dist/
+build/
+public/
+
+# AI Modelleri
+ai_models/*.h5
+ai_models/*.pt
+ai_models/*.ckpt
+ai_models/__pycache__/
+ai_models/outputs/
+ai_models/models/
+ai_models/checkpoints/
+ai_models/venv/
+
+# Docker
+docker-compose.override.yml
+*.dockerfile
+
+# Jupyter Notebook (Eğer Kullanılıyorsa)
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs & Debug Files
+logs/
+*.log
+*.out
+*.err
+
+# IDE ve Editör Dosyaları
+.vscode/
+.idea/
+*.iml
+
+# MacOS Özel Dosyaları
+*.DS_Store
+
+# Deployment / CI/CD
+deploy/
+*.pem
+*.crt
+*.key
