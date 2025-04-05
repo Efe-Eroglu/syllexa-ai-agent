@@ -1,20 +1,19 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware  
+import os
 from app.db.database import Base, engine, get_db
 from app.models import user, chat, task, progress, tts_log, wordbank
-from app.api import auth_routes
-
-app = FastAPI(title="Syllexa AI Backend")
+from app.api import auth_routes, auth_google
 
 Base.metadata.create_all(bind=engine)
 
-print(">>> ROUTER:", auth_routes.router.routes)
-app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
+app = FastAPI(title="Syllexa AI Backend")
 
-@app.get("/db-check")
-def check_db_connection(db: Session = Depends(get_db)):
-    try:
-        db.execute("SELECT 1")
-        return {"status": "ok", "message": "Veritabanı bağlantısı başarılı, tablolar oluşturuldu."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY")  
+)
+
+app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
+app.include_router(auth_google.router, prefix="/auth", tags=["Social Login"])
