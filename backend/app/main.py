@@ -1,12 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
 from app.db.database import Base, engine, get_db
 from app.models import user, chat, task, progress, tts_log, wordbank
-from sqlalchemy.orm import Session
-from fastapi import Depends
+from app.api import auth_routes
 
-app = FastAPI(title="Syllexa AI Backend - DB Test")
+app = FastAPI(title="Syllexa AI Backend")
 
 Base.metadata.create_all(bind=engine)
+
+print(">>> ROUTER:", auth_routes.router.routes)
+app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
 
 @app.get("/db-check")
 def check_db_connection(db: Session = Depends(get_db)):
