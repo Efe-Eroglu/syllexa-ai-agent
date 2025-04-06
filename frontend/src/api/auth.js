@@ -53,3 +53,26 @@ export const useAuth = () => {
 
   return { isAuthenticated, loading };
 };
+
+export const logoutUser = async () => {
+  const token = localStorage.getItem("access_token");
+
+  if (!token) {
+    localStorage.removeItem("access_token");
+    window.location.href = "/login";
+    return;
+  }
+
+  try {
+    await axios.post(`${AUTH_URL}/logout`, null, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (error) {
+    console.warn("Logout hatası:", error.response?.data || error.message);
+  } finally {
+    localStorage.removeItem("access_token");
+    window.location.href = "/login";
+  }
+};
