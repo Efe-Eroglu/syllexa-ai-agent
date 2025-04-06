@@ -5,8 +5,8 @@ import { FiArrowLeft } from "react-icons/fi";
 import "../styles/pages/register.css";
 import { registerUser } from "../api/auth";
 import { API_BASE_URL } from "../config";
-import axios from "axios"
-
+import axios from "axios";
+import { notifySuccess, notifyError } from "../utils/toast";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -27,15 +27,23 @@ export default function Register() {
 
     try {
       if (!agreed) {
-        setError("Devam etmek için şartları kabul etmelisiniz.");
+        const msg = "Devam etmek için şartları kabul etmelisiniz.";
+        setError(msg);
+        notifyError(msg);
         return;
       }
+
       await registerUser(email, password, fullName);
+      notifySuccess("Kayıt başarılı!");
       navigate("/chat");
     } catch (err) {
-      setError(err.response?.data?.detail || "Kayıt işlemi başarısız.");
+      const message =
+        err.response?.data?.detail || "Kayıt işlemi sırasında bir hata oluştu.";
+      setError(message);
+      notifyError(message);
     }
   };
+
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     console.log("Token : ", token);
