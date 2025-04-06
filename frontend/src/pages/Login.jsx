@@ -5,7 +5,8 @@ import { FiArrowLeft } from "react-icons/fi";
 import "../styles/pages/login.css";
 import { loginUser } from "../api/auth";
 import { API_BASE_URL } from "../config";
-import axios from "axios" 
+import axios from "axios";
+import { notifySuccess, notifyError } from "../utils/toast";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -20,15 +21,18 @@ export default function Login() {
     try {
       const data = await loginUser(email, password);
       localStorage.setItem("access_token", data.access_token);
+
+      notifySuccess("Giriş başarılı!");
       navigate("/chat");
     } catch (err) {
-      setError(err.detail || "Giriş yapılamadı.");
+      const message = err.detail || "Giriş yapılamadı.";
+      setError(message);
+      notifyError(message);
     }
   };
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    console.log("Token : ", token)
     if (!token) return;
 
     axios
@@ -38,7 +42,7 @@ export default function Login() {
         },
       })
       .then(() => navigate("/chat"))
-      .catch(() => {}); 
+      .catch(() => {});
   }, []);
   return (
     <div className="login-container">

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { API_BASE_URL } from "../config";
+import { notifySuccess, notifyError } from "../utils/toast";
 
 const AUTH_URL = `${API_BASE_URL}/auth`;
 
@@ -59,6 +60,7 @@ export const logoutUser = async () => {
 
   if (!token) {
     localStorage.removeItem("access_token");
+    notifySuccess("Çıkış yapıldı.");
     window.location.href = "/login";
     return;
   }
@@ -69,8 +71,10 @@ export const logoutUser = async () => {
         Authorization: `Bearer ${token}`,
       },
     });
+    notifySuccess("Çıkış yapıldı.");
   } catch (error) {
     console.warn("Logout hatası:", error.response?.data || error.message);
+    notifyError("Çıkış sırasında hata oluştu.");
   } finally {
     localStorage.removeItem("access_token");
     window.location.href = "/login";

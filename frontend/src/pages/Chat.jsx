@@ -16,6 +16,7 @@ import "../styles/pages/chat.css";
 import { startRecording, stopRecording } from "../utils/useRecorder";
 import { WS_BASE_URL } from "../config";
 import { logoutUser } from "../api/auth";
+import { notifySuccess, notifyError, notifyInfo } from "../utils/toast";
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -55,6 +56,7 @@ export default function Chat() {
     const updatedChats = chats.filter((chat) => chat.id !== chatId);
     setChats(updatedChats);
     setSelectedChatOptions(null);
+    notifyInfo("Sohbet silindi.");
   };
 
   const handleSend = (e) => {
@@ -104,6 +106,7 @@ export default function Chat() {
         fileType: file.type,
       };
       setMessages([...messages, newMessage]);
+      notifySuccess("Dosya başarıyla yüklendi!");
     }
   };
 
@@ -134,9 +137,10 @@ export default function Chat() {
       };
     }
   };
-  
+
   const handleLogout = async () => {
     await logoutUser();
+    notifySuccess("Çıkış yapıldı.");
   };
 
   return (
@@ -340,6 +344,7 @@ export default function Chat() {
                   setMessages([]);
                   setChats([]);
                   setShowSettingsModal(false);
+                  notifyInfo("Tüm sohbetler silindi.");
                 }}
               >
                 <FiTrash2 className="btn-icon" />
