@@ -3,6 +3,8 @@ import { FiSend, FiMenu, FiPlus, FiMic, FiFile } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiRobot2Line } from "react-icons/ri";
 import "../styles/pages/chat.css";
+import { startRecording, stopRecording } from "../utils/useRecorder";
+import { WS_BASE_URL } from "../config";
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -68,9 +70,33 @@ export default function Chat() {
     }
   };
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // Ses kaydı işlemleri burada yapılacak
+  const toggleRecording = async () => {
+    if (!isRecording) {
+      setIsRecording(true);
+      await startRecording(); // Başlat
+    } else {
+      setIsRecording(false);
+      const wavBlob = await stopRecording(); // Bitir
+
+      // WebSocket ile gönder
+      const ws = new WebSocket(`${WS_BASE_URL}/speech`);
+      ws.onopen = () => {
+        ws.send(wavBlob);
+      };
+
+      ws.onmessage = (event) => {
+        const text = event.data.trim();
+        if (text) {
+          const newMessage = {
+            id: messages.length + 1,
+            text: text,
+            isUser: true,
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          setMessages((prev) => [...prev, newMessage]);
+        }
+      };
+    }
   };
 
   return (
@@ -82,7 +108,7 @@ export default function Chat() {
             <FiPlus />
           </button>
         </div>
-        
+
         <div className="chat-list">
           {chats.map((chat) => (
             <div key={chat.id} className="chat-item">
@@ -95,8 +121,8 @@ export default function Chat() {
       {/* Main Chat Area */}
       <div className="main-chat-area">
         <div className="chat-header">
-          <button 
-            className="menu-toggle" 
+          <button
+            className="menu-toggle"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             <FiMenu />
@@ -115,11 +141,7 @@ export default function Chat() {
               className={`message ${message.isUser ? "user" : "ai"}`}
             >
               <div className="message-avatar">
-                {message.isUser ? (
-                  <AiOutlineUser />
-                ) : (
-                  <RiRobot2Line />
-                )}
+                {message.isUser ? <AiOutlineUser /> : <RiRobot2Line />}
               </div>
               <div className="message-content">
                 {message.file ? (
@@ -139,22 +161,22 @@ export default function Chat() {
         <form className="chat-input-area" onSubmit={handleSend}>
           <div className="input-actions">
             <label className="file-upload-button">
-              <input 
-                type="file" 
-                onChange={handleFileUpload} 
-                style={{ display: "none" }} 
+              <input
+                type="file"
+                onChange={handleFileUpload}
+                style={{ display: "none" }}
               />
               <FiFile />
             </label>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`record-button ${isRecording ? "recording" : ""}`}
               onClick={toggleRecording}
             >
               <FiMic />
             </button>
           </div>
-          
+
           <input
             type="text"
             value={inputText}
@@ -162,7 +184,7 @@ export default function Chat() {
             placeholder="Syllexa AI'ya bir şeyler sor..."
             className="chat-input"
           />
-          
+
           <button type="submit" className="send-button">
             <FiSend />
           </button>
