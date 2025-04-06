@@ -23,7 +23,9 @@ class User(Base):
 
     # ilişkiler
     messages = relationship("ChatMessage", back_populates="user", cascade="all, delete")
+    chats = relationship("Chat", back_populates="user", cascade="all, delete")  # Bu satırı ekleyin
     tasks = relationship("Task", back_populates="user", cascade="all, delete")
     progress = relationship("LearningProgress", back_populates="user", cascade="all, delete")
     tts_logs = relationship("TTSLog", back_populates="user", cascade="all, delete")
     wordbank = relationship("CustomWord", back_populates="user", cascade="all, delete")
+
