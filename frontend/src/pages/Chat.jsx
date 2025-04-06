@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { FiSend, FiMenu, FiPlus, FiMic, FiFile } from "react-icons/fi";
+import {
+  FiSend,
+  FiMenu,
+  FiPlus,
+  FiMic,
+  FiFile,
+  FiSettings,
+} from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiRobot2Line } from "react-icons/ri";
 import "../styles/pages/chat.css";
@@ -16,12 +23,28 @@ export default function Chat() {
     },
   ]);
   const [inputText, setInputText] = useState("");
+  const [selectedChatOptions, setSelectedChatOptions] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [chats, setChats] = useState([
     { id: 1, title: "Disleksi Hakkında" },
     { id: 2, title: "Ödev Yardımı" },
   ]);
   const [isRecording, setIsRecording] = useState(false);
+
+  const handleToggleOptions = (chatId) => {
+    setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
+  };
+
+  const handleShowDetails = (chatId) => {
+    console.log("Detaylar gösteriliyor:", chatId);
+    setSelectedChatOptions(null);
+  };
+
+  const handleDeleteChat = (chatId) => {
+    const updatedChats = chats.filter((chat) => chat.id !== chatId);
+    setChats(updatedChats);
+    setSelectedChatOptions(null);
+  };
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -112,9 +135,37 @@ export default function Chat() {
         <div className="chat-list">
           {chats.map((chat) => (
             <div key={chat.id} className="chat-item">
-              {chat.title}
+              <span>{chat.title}</span>
+              <div className="chat-options-wrapper">
+                <button
+                  className="chat-options-button"
+                  onClick={() => handleToggleOptions(chat.id)}
+                >
+                  ⋮
+                </button>
+                {selectedChatOptions === chat.id && (
+                  <div className="chat-options-menu">
+                    <button onClick={() => handleShowDetails(chat.id)}>
+                      Detaylar
+                    </button>
+                    <button onClick={() => handleDeleteChat(chat.id)}>
+                      Sil
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+        <div className="menu-footer">
+          <button
+            className="settings-button"
+            onClick={() => console.log("Ayarlar açıldı")}
+          >
+            {" "}
+            <FiSettings className="icon" />
+            <span className="text">Ayarlar</span>
+          </button>
         </div>
       </div>
 
