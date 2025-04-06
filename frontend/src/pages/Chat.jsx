@@ -17,6 +17,7 @@ import { startRecording, stopRecording } from "../utils/useRecorder";
 import { WS_BASE_URL } from "../config";
 import { logoutUser } from "../api/auth";
 import { notifySuccess, notifyError, notifyInfo } from "../utils/toast";
+// import { fetchChatList } from "../api/chat";
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -140,7 +141,6 @@ export default function Chat() {
 
   const handleLogout = async () => {
     await logoutUser();
-    notifySuccess("Çıkış yapıldı.");
   };
 
   return (
