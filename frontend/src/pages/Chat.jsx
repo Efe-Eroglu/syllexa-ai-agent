@@ -17,7 +17,17 @@ import { startRecording, stopRecording } from "../utils/useRecorder";
 import { WS_BASE_URL } from "../config";
 import { logoutUser } from "../api/auth";
 import { notifySuccess, notifyError, notifyInfo } from "../utils/toast";
-import { fetchChats, createChat,deleteChat } from "../api/chat";
+import axios from "axios";
+import {
+  fetchChats,
+  createChat,
+  deleteChat,
+  sendMessage,
+  getChatMessages,
+  renameChat,
+  uploadFile,
+  getChatFiles,
+} from "../api/chat";
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -32,21 +42,32 @@ export default function Chat() {
   const [chats, setChats] = useState([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [chatFiles, setChatFiles] = useState([]);
   const [selectedChatOptions, setSelectedChatOptions] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedChatDetails, setSelectedChatDetails] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const handleToggleOptions = (chatId) => {
     setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
   };
 
-  const handleShowDetails = (chatId) => {
+  const handleShowDetails = async (chatId) => {
+    const token = localStorage.getItem("access_token");
     const chat = chats.find((c) => c.id === chatId);
     setSelectedChatDetails(chat);
     setShowDetailsModal(true);
     setSelectedChatOptions(null);
+
+    try {
+      const files = await getChatFiles(chatId, token);
+      setChatFiles(files);
+    } catch (error) {
+      notifyError("Sohbete ait dosyalar alınamadı.");
+    }
   };
 
   const handleDeleteChat = async (chatId) => {
@@ -78,9 +99,17 @@ export default function Chat() {
     }
   };
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (inputText.trim() === "") return;
+
+    const token = localStorage.getItem("access_token");
+    const chatId = selectedChatDetails?.id || chats[0]?.id;
+
+    if (!chatId) {
+      notifyError("Lütfen önce bir sohbet seçin.");
+      return;
+    }
 
     const newMessage = {
       id: messages.length + 1,
@@ -89,18 +118,27 @@ export default function Chat() {
       timestamp: new Date().toLocaleTimeString(),
     };
 
-    setMessages([...messages, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
     setInputText("");
 
-    setTimeout(() => {
-      const aiResponse = {
+    try {
+      const response = await sendMessage(chatId, inputText, token);
+      const aiText = response.reply || "AI'dan yanıt alınamadı.";
+
+      const aiMessage = {
         id: messages.length + 2,
-        text: "Bu konuda size yardımcı olabilirim. Lütfen biraz daha detay verebilir misiniz?",
+        text: aiText,
         isUser: false,
         timestamp: new Date().toLocaleTimeString(),
       };
-      setMessages((prev) => [...prev, aiResponse]);
-    }, 1000);
+
+      setMessages((prev) => [...prev, aiMessage]);
+
+      await sendMessage(chatId, aiText, token, "ai");
+    } catch (error) {
+      console.error("Mesaj gönderme hatası:", error);
+      notifyError("Mesaj gönderilemedi.");
+    }
   };
 
   const handleNewChat = async () => {
@@ -134,9 +172,57 @@ export default function Chat() {
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleRenameChat = (chatId, currentTitle) => {
+    setEditingChatId(chatId);
+    setEditingTitle(currentTitle);
+  };
+
+  const submitRenameChat = async () => {
+    const token = localStorage.getItem("access_token");
+
+    if (!editingTitle || editingTitle.trim() === "") {
+      notifyError("Geçerli bir isim girilmedi.");
+      return;
+    }
+
+    try {
+      await renameChat(editingChatId, editingTitle, token); // 👈 direkt chat.js fonksiyonunu çağırıyoruz
+
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === editingChatId ? { ...chat, title: editingTitle } : chat
+        )
+      );
+
+      notifySuccess("Sohbet ismi güncellendi.");
+    } catch (error) {
+      console.error("İsim güncellenirken hata oluştu:", error);
+      notifyError("Sohbet ismi değiştirilemedi.");
+    } finally {
+      setEditingChatId(null);
+      setEditingTitle("");
+    }
+  };
+
+  const handleRenameKeyPress = (e) => {
+    if (e.key === "Enter") {
+      submitRenameChat();
+    }
+  };
+
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
+    const token = localStorage.getItem("access_token");
+    const chatId = selectedChatDetails?.id || chats[0]?.id;
+
+    if (!file || !chatId || !token) {
+      notifyError("Dosya yüklenemedi. Lütfen geçerli bir sohbet seçin.");
+      return;
+    }
+
+    try {
+      await uploadFile(chatId, file, token);
+
       const newMessage = {
         id: messages.length + 1,
         text: `Belge yüklendi: ${file.name}`,
@@ -147,8 +233,12 @@ export default function Chat() {
         fileSize: file.size,
         fileType: file.type,
       };
+
       setMessages([...messages, newMessage]);
       notifySuccess("Dosya başarıyla yüklendi!");
+    } catch (error) {
+      console.error("Dosya yüklenirken hata oluştu:", error);
+      notifyError("Dosya yüklenemedi.");
     }
   };
 
@@ -199,6 +289,27 @@ export default function Chat() {
     }
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+
+    if (selectedChatDetails && token) {
+      getChatMessages(selectedChatDetails.id, token)
+        .then((data) => {
+          const formattedMessages = data.map((msg, i) => ({
+            id: i + 1,
+            text: msg.message,
+            isUser: msg.role === "student",
+            timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+          }));
+          setMessages(formattedMessages);
+        })
+        .catch((error) => {
+          console.error("Mesajlar yüklenirken hata:", error);
+          notifyError("Sohbet geçmişi alınamadı.");
+        });
+    }
+  }, [selectedChatDetails]);
+
   return (
     <>
       <div className="chat-container">
@@ -212,8 +323,28 @@ export default function Chat() {
 
           <div className="chat-list">
             {chats.map((chat) => (
-              <div key={chat.id} className="chat-item">
-                <span>{chat.title}</span>{" "}
+              <div
+                key={chat.id}
+                className={`chat-item ${
+                  selectedChatDetails?.id === chat.id ? "active" : ""
+                }`}
+              >
+                {editingChatId === chat.id ? (
+                  <input
+                    type="text"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onBlur={submitRenameChat}
+                    onKeyDown={handleRenameKeyPress}
+                    autoFocus
+                    className="rename-input"
+                  />
+                ) : (
+                  <span onClick={() => setSelectedChatDetails(chat)}>
+                    {chat.title}
+                  </span>
+                )}
+
                 <div className="chat-options-wrapper">
                   <button
                     className="chat-options-button"
@@ -221,12 +352,33 @@ export default function Chat() {
                   >
                     ⋮
                   </button>
+
                   {selectedChatOptions === chat.id && (
                     <div className="chat-options-menu">
-                      <button onClick={() => handleShowDetails(chat.id)}>
+                      <button
+                        onClick={() => {
+                          handleShowDetails(chat.id);
+                          setSelectedChatOptions(null); // 👈 menüyü kapat
+                        }}
+                      >
                         Detaylar
                       </button>
-                      <button onClick={() => handleDeleteChat(chat.id)}>
+
+                      <button
+                        onClick={() => {
+                          handleRenameChat(chat.id, chat.title);
+                          setSelectedChatOptions(null); // 👈 menüyü kapat
+                        }}
+                      >
+                        İsim Değiştir
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleDeleteChat(chat.id);
+                          setSelectedChatOptions(null); // 👈 menüyü kapat
+                        }}
+                      >
                         Sil
                       </button>
                     </div>
@@ -331,32 +483,29 @@ export default function Chat() {
             <div className="modal-section">
               <h4>Yüklenen Dosyalar:</h4>
               <div className="file-card-grid">
-                {messages.filter((msg) => msg.file).length > 0 ? (
-                  messages
-                    .filter((msg) => msg.file)
-                    .map((msg, index) => (
-                      <div className="file-card" key={index}>
-                        <div className="file-card-header">
-                          <FiFile className="file-icon" />
-                          <div className="file-name">{msg.file.name}</div>
-                        </div>
-                        <div className="file-info">
-                          <span>
-                            <strong>Tür:</strong> {msg.fileType || "bilinmiyor"}
-                          </span>
-                          <span>
-                            <strong>Boyut:</strong>{" "}
-                            {msg.fileSize
-                              ? (msg.fileSize / 1024).toFixed(1) + " KB"
-                              : "?"}
-                          </span>
-                          <span>
-                            <strong>Yüklenme:</strong>{" "}
-                            {msg.uploadedAt || msg.timestamp}
-                          </span>
-                        </div>
+                {chatFiles.length > 0 ? (
+                  chatFiles.map((file, index) => (
+                    <div className="file-card" key={index}>
+                      <div className="file-card-header">
+                        <FiFile className="file-icon" />
+                        <div className="file-name">{file.original_name}</div>
                       </div>
-                    ))
+                      <div className="file-info">
+                        <span>
+                          <strong>Tür:</strong> {file.mimetype || "bilinmiyor"}
+                        </span>
+                        <span>
+                          <strong>Boyut:</strong>{" "}
+                          {file.size
+                            ? `${(file.size / 1024).toFixed(1)} KB`
+                            : "?"}
+                        </span>
+                        <span>
+                          <strong>Yüklenme:</strong> {file.uploaded_at}
+                        </span>
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <div className="no-files">
                     <p>📁 Henüz bu sohbette dosya yüklenmemiş.</p>

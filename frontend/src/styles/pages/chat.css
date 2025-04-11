@@ -680,3 +680,20 @@
   font-style: italic;
   font-size: 0.95rem;
 }
+
+.rename-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.6rem 1rem;
+  border-radius: 0.45rem;
+  font-size: 0.95rem;
+  color: #e2e8f0;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.rename-input:focus {
+  outline: none;
+  border-color: #818cf8;
+  background: rgba(129, 140, 248, 0.08);
+}

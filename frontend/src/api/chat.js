@@ -75,13 +75,13 @@ export const deleteChat = async (chatId, token) => {
 };
 
 // 🎯 [4] Mesaj gönder
-export const sendMessage = async (chatId, message, token) => {
+export const sendMessage = async (chatId, message, token, role = "student") => {
   try {
     const response = await axios.post(
       `${CHAT_URL}/send`,
       {
         chat_id: chatId,
-        role: "student",
+        role: role,
         message: message,
       },
       {
@@ -138,11 +138,14 @@ export const uploadFile = async (chatId, file, token) => {
 // 📦 [7] Sohbete ait dosyaları getir
 export const getChatFiles = async (chatId, token) => {
   try {
-    const response = await axios.get(`${CHAT_URL}/chat_files/${chatId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axios.get(
+      `${API_BASE_URL}/api/chat_files/${chatId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error("Dosyalar alınırken hata oluştu:", error);
