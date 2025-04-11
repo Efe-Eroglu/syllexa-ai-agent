@@ -1,19 +1,36 @@
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 
-const CHAT_URL = `${API_BASE_URL}/chats`;
+const CHAT_URL = `${API_BASE_URL}/api/chats`;
 
 // 🎯 [1] Sohbet listesini al
 export const fetchChats = async (token) => {
+  console.log("fetchChats çalıştı..."); // Loglama: Fonksiyon çağrıldı
   try {
     const response = await axios.get(`${CHAT_URL}/list`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+    console.log("Sohbetler başarıyla alındı:", response.data); // Loglama: Başarılı yanıt
     return response.data;
   } catch (error) {
-    console.error("Sohbetler alınırken hata oluştu:", error);
+    console.error("Sohbetler alınırken hata oluştu:", error); // Loglama: Hata durumu
+    // Detaylı loglama: Hata yanıtı ve mesaj
+    if (error.response) {
+      // Sunucudan gelen hata
+      console.error("API yanıt hatası:", error.response.data);
+      console.error("API durum kodu:", error.response.status);
+    } else if (error.request) {
+      // İstek yapıldı ama cevap alınamadı
+      console.error(
+        "API isteği yapıldı, fakat cevap alınamadı:",
+        error.request
+      );
+    } else {
+      // Başka hatalar
+      console.error("Hata:", error.message);
+    }
     throw error;
   }
 };
@@ -21,34 +38,39 @@ export const fetchChats = async (token) => {
 // 🎯 [2] Yeni sohbet oluştur
 export const createChat = async (chatTitle, token) => {
   try {
+    console.log("createChat API çağrılıyor...");
     const response = await axios.post(
       `${CHAT_URL}/create`,
       { title: chatTitle },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
+    console.log("API Yanıtı: ", response);
     return response.data;
   } catch (error) {
-    console.error("Sohbet oluşturulurken hata oluştu:", error);
-    throw error;
+    console.error(
+      "Sohbet oluşturulurken hata oluştu:",
+      error.response || error
+    );
+    throw error; // Hata fırlatılacak, üstteki catch bloğunda yakalanacak
   }
 };
 
 // 🎯 [3] Sohbet sil
 export const deleteChat = async (chatId, token) => {
   try {
+    console.log(`deleteChat API çağrısı yapılıyor: ${chatId}`); // Loglama: API çağrısı
+
     const response = await axios.delete(`${CHAT_URL}/${chatId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    console.log("API Yanıtı: ", response); // Loglama: API Yanıtı
     return response.data;
   } catch (error) {
-    console.error("Sohbet silinirken hata oluştu:", error);
-    throw error;
+    console.error("Sohbet silinirken hata oluştu:", error.response || error); // Loglama: Hata
+    throw error; // Hata fırlatılıyor, Chat.jsx içinde yakalanacak
   }
 };
 

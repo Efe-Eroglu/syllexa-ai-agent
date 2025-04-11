@@ -17,7 +17,7 @@ import { startRecording, stopRecording } from "../utils/useRecorder";
 import { WS_BASE_URL } from "../config";
 import { logoutUser } from "../api/auth";
 import { notifySuccess, notifyError, notifyInfo } from "../utils/toast";
-// import { fetchChatList } from "../api/chat";
+import { fetchChats, createChat,deleteChat } from "../api/chat";
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -29,11 +29,7 @@ export default function Chat() {
     },
   ]);
 
-  const [chats, setChats] = useState([
-    { id: 1, title: "Disleksi Hakkında" },
-    { id: 2, title: "Ödev Yardımı" },
-  ]);
-
+  const [chats, setChats] = useState([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [inputText, setInputText] = useState("");
   const [selectedChatOptions, setSelectedChatOptions] = useState(null);
@@ -53,11 +49,33 @@ export default function Chat() {
     setSelectedChatOptions(null);
   };
 
-  const handleDeleteChat = (chatId) => {
-    const updatedChats = chats.filter((chat) => chat.id !== chatId);
-    setChats(updatedChats);
-    setSelectedChatOptions(null);
-    notifyInfo("Sohbet silindi.");
+  const handleDeleteChat = async (chatId) => {
+    const token = localStorage.getItem("access_token");
+
+    if (token) {
+      try {
+        console.log("Sohbet silme işlemi başlatıldı..."); // Loglama: Başlangıç
+
+        // 1. API çağrısı yaparak sohbeti siliyoruz
+        await deleteChat(chatId, token);
+
+        console.log(`Sohbet başarıyla silindi: ${chatId}`); // Loglama: Başarı
+
+        // 2. Sohbeti sohbet listesinden çıkarıyoruz
+        const updatedChats = chats.filter((chat) => chat.id !== chatId);
+        setChats(updatedChats);
+
+        // 3. Kullanıcıya başarı mesajı gösteriyoruz
+        notifyInfo("Sohbet başarıyla silindi.");
+      } catch (error) {
+        // 4. Hata durumu: Hata mesajını logluyoruz
+        console.error("Sohbet silinirken hata oluştu:", error);
+        notifyError("Sohbet silinirken bir hata oluştu.");
+      }
+    } else {
+      console.log("Token bulunamadı!"); // Token yoksa loglama
+      notifyError("Giriş yapmadınız. Lütfen giriş yapın.");
+    }
   };
 
   const handleSend = (e) => {
@@ -85,12 +103,35 @@ export default function Chat() {
     }, 1000);
   };
 
-  const handleNewChat = () => {
-    const newChat = {
-      id: chats.length + 1,
-      title: `Yeni Sohbet ${chats.length + 1}`,
-    };
-    setChats([...chats, newChat]);
+  const handleNewChat = async () => {
+    // 1. Token'ı kontrol edelim
+    const token = localStorage.getItem("access_token");
+    console.log("Token kontrolü: ", token);
+
+    if (token) {
+      try {
+        // 2. Yeni sohbet başlığını ayarlıyoruz
+        const chatTitle = `Yeni Sohbet ${chats.length + 1}`;
+        console.log("Yeni sohbet başlığı: ", chatTitle);
+
+        // 3. createChat fonksiyonunu çağırıyoruz
+        console.log("createChat çağrıldı...");
+        const newChat = await createChat(chatTitle, token);
+        console.log("Yeni sohbet başarıyla oluşturuldu:", newChat);
+
+        // 4. Yeni sohbeti ekliyoruz
+        setChats([...chats, newChat]);
+        setInputText(""); // Inputu sıfırlıyoruz
+        console.log("Sohbetler güncellendi: ", chats);
+      } catch (error) {
+        // 5. Hata durumunu logluyoruz
+        console.error("Sohbet oluşturulurken hata oluştu:", error);
+        notifyError("Sohbet oluşturulurken bir hata oluştu.");
+      }
+    } else {
+      console.log("Token bulunamadı!");
+      notifyError("Giriş yapmadınız. Lütfen giriş yapın.");
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -143,6 +184,21 @@ export default function Chat() {
     await logoutUser();
   };
 
+  useEffect(() => {
+    const token = localStorage.getItem("access_token"); // Token'ı yerel depolamadan alıyoruz
+    console.log("Token:", token); // Loglama: Token alındı
+    if (token) {
+      fetchChats(token)
+        .then((data) => {
+          console.log("Alınan sohbetler:", data); // Loglama: Sohbet verisi alındı
+          setChats(data); // API'den gelen sohbetleri state'e kaydediyoruz
+        })
+        .catch((error) => {
+          console.error("Sohbetler alınırken bir hata oluştu:", error); // Loglama: Hata
+        });
+    }
+  }, []);
+
   return (
     <>
       <div className="chat-container">
@@ -157,7 +213,7 @@ export default function Chat() {
           <div className="chat-list">
             {chats.map((chat) => (
               <div key={chat.id} className="chat-item">
-                <span>{chat.title}</span>
+                <span>{chat.title}</span>{" "}
                 <div className="chat-options-wrapper">
                   <button
                     className="chat-options-button"
@@ -179,6 +235,7 @@ export default function Chat() {
               </div>
             ))}
           </div>
+
           <div className="menu-footer">
             <button
               className="settings-button"
