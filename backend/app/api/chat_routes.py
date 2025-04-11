@@ -196,7 +196,7 @@ def get_chat_stats(
     }
 
 
-# Sohbet Geçmişi
+# [11] Sohbet Geçmişi
 @router.get("/chats/{chat_id}/history", response_model=List[ChatMessageOut])
 def get_chat_history(
     chat_id: int,
@@ -208,11 +208,10 @@ def get_chat_history(
     if not chat:
         raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
 
-    # Sohbetin geçmişini al
     messages = db.query(ChatMessage).filter(ChatMessage.chat_id == chat_id).all()
     return messages
 
-# Sogbet Sabitleme
+# [12] Sohbet Sabitleme
 @router.post("/chats/{chat_id}/pin")
 def pin_chat(
     chat_id: int,
@@ -224,19 +223,18 @@ def pin_chat(
     if not chat:
         raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
 
-    chat.is_pinned = True  # Yeni bir alan ekleyebilirsiniz (is_pinned)
+    chat.is_pinned = True  
     db.commit()
     db.refresh(chat)
     return chat
 
 
-# 🎯 Sabitlenmiş Sohbetleri Getir
+# [13] Sabitlenmiş Sohbetleri Getir
 @router.get("/chats/pinned", response_model=List[ChatOut])
 def get_pinned_chats(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    # Sabitlenmiş sohbetleri sorguluyoruz
     pinned_chats = db.query(Chat).filter(Chat.user_id == current_user.id, Chat.is_pinned == True).all()
 
     if not pinned_chats:
