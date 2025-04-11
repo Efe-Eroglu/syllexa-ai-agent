@@ -128,15 +128,12 @@ def get_chat_files(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    # chat_id'ye ait dosyaları sorguluyoruz
     files = db.query(ChatFile).filter(ChatFile.chat_id == chat_id).all()
 
     if not files:
         raise HTTPException(status_code=404, detail="Dosya bulunamadı")
 
-    # Dosyaların yolu doğru şekilde döndürülüyor
     for file in files:
-        # `filepath`'i http yolu ile güncelliyoruz
         file.filepath = f"/uploads/{file.filename}"
 
     return files
@@ -156,3 +153,93 @@ def delete_file(
     db.delete(file)
     db.commit()
     return {"message": f"Dosya (ID={file_id}) silindi."}
+
+
+# ✏️ [9] Sohbet ismini değiştir
+@router.put("/chats/{chat_id}/rename", response_model=ChatOut)
+def rename_chat(
+    chat_id: int,
+    chat_data: ChatCreate,  
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+
+    if not chat:
+        raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+
+    chat.title = chat_data.title  
+    db.commit()
+    db.refresh(chat)
+    return chat
+
+
+# [10] Sohbet istatistiklerini getir
+@router.get("/chats/{chat_id}/stats")
+def get_chat_stats(
+    chat_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+
+    if not chat:
+        raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+
+    # İstatistikler
+    total_messages = db.query(ChatMessage).filter(ChatMessage.chat_id == chat_id).count()
+    total_files = db.query(ChatFile).filter(ChatFile.chat_id == chat_id).count()
+
+    return {
+        "total_messages": total_messages,
+        "total_files": total_files,
+    }
+
+
+# Sohbet Geçmişi
+@router.get("/chats/{chat_id}/history", response_model=List[ChatMessageOut])
+def get_chat_history(
+    chat_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+
+    if not chat:
+        raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+
+    # Sohbetin geçmişini al
+    messages = db.query(ChatMessage).filter(ChatMessage.chat_id == chat_id).all()
+    return messages
+
+# Sogbet Sabitleme
+@router.post("/chats/{chat_id}/pin")
+def pin_chat(
+    chat_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+
+    if not chat:
+        raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+
+    chat.is_pinned = True  # Yeni bir alan ekleyebilirsiniz (is_pinned)
+    db.commit()
+    db.refresh(chat)
+    return chat
+
+
+# 🎯 Sabitlenmiş Sohbetleri Getir
+@router.get("/chats/pinned", response_model=List[ChatOut])
+def get_pinned_chats(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    # Sabitlenmiş sohbetleri sorguluyoruz
+    pinned_chats = db.query(Chat).filter(Chat.user_id == current_user.id, Chat.is_pinned == True).all()
+
+    if not pinned_chats:
+        raise HTTPException(status_code=404, detail="Sabitlenmiş sohbet bulunamadı")
+
+    return pinned_chats

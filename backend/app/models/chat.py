@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, Boolean 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -16,6 +16,7 @@ class Chat(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_pinned = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="chats")
     messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete")
