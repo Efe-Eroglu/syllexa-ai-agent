@@ -74,14 +74,14 @@ export const deleteChat = async (chatId, token) => {
   }
 };
 
-// 🎯 [4] Mesaj gönder
-export const sendMessage = async (chatId, message, token) => {
+export const sendMessage = async (chatId, message, token, role = "student") => {
+  console.log("Mesaj gönderiliyor:", { chatId, message, role }); // Mesajın loglanması
   try {
     const response = await axios.post(
-      `${CHAT_URL}/send`,
+      `${CHAT_URL}/send`, // Backend endpoint
       {
         chat_id: chatId,
-        role: "student",
+        role: role,
         message: message,
       },
       {
@@ -90,10 +90,18 @@ export const sendMessage = async (chatId, message, token) => {
         },
       }
     );
-    return response.data;
+
+    console.log("Backend yanıtı:", response.data); // Backend'den gelen yanıtı logla
+
+    // Yanıtın doğru yapıda olduğunu kontrol et
+    if (response.data && response.data.message) {
+      return { reply: response.data.message }; // Yanıtı frontend'e gönder
+    } else {
+      throw new Error("Yanıt alınamadı."); // Yanıt alınamazsa hata fırlat
+    }
   } catch (error) {
-    console.error("Mesaj gönderilirken hata oluştu:", error);
-    throw error;
+    console.error("Mesaj gönderilirken hata oluştu:", error); // Loglama
+    throw error; // Hata fırlatılıyor
   }
 };
 
@@ -138,11 +146,14 @@ export const uploadFile = async (chatId, file, token) => {
 // 📦 [7] Sohbete ait dosyaları getir
 export const getChatFiles = async (chatId, token) => {
   try {
-    const response = await axios.get(`${CHAT_URL}/chat_files/${chatId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axios.get(
+      `${API_BASE_URL}/api/chat_files/${chatId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error("Dosyalar alınırken hata oluştu:", error);

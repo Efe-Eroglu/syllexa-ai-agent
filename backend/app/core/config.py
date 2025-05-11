@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field
+# backend/app/core/config.py
+
+from pydantic_settings import BaseSettings   # pydantic-settings kullanıyoruz
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -12,10 +13,15 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
 
     # Facebook OAuth (ileride kullanılacak)
-    FACEBOOK_APP_ID: str = Field(..., env="FACEBOOK_APP_ID")
-    FACEBOOK_APP_SECRET: str = Field(..., env="FACEBOOK_APP_SECRET")
+    FACEBOOK_APP_ID: str 
+    FACEBOOK_APP_SECRET: str
 
+    # OpenAI API
+    OPENAI_API_KEY: str 
+    ASSISTANT_ID: str
+    
     class Config:
         env_file = ".env"
 
+# Ayarları yükle
 settings = Settings()
