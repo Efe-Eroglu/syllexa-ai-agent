@@ -74,11 +74,11 @@ export const deleteChat = async (chatId, token) => {
   }
 };
 
-// 🎯 [4] Mesaj gönder
 export const sendMessage = async (chatId, message, token, role = "student") => {
+  console.log("Mesaj gönderiliyor:", { chatId, message, role }); // Mesajın loglanması
   try {
     const response = await axios.post(
-      `${CHAT_URL}/send`,
+      `${CHAT_URL}/send`, // Backend endpoint
       {
         chat_id: chatId,
         role: role,
@@ -90,10 +90,18 @@ export const sendMessage = async (chatId, message, token, role = "student") => {
         },
       }
     );
-    return response.data;
+
+    console.log("Backend yanıtı:", response.data); // Backend'den gelen yanıtı logla
+
+    // Yanıtın doğru yapıda olduğunu kontrol et
+    if (response.data && response.data.message) {
+      return { reply: response.data.message }; // Yanıtı frontend'e gönder
+    } else {
+      throw new Error("Yanıt alınamadı."); // Yanıt alınamazsa hata fırlat
+    }
   } catch (error) {
-    console.error("Mesaj gönderilirken hata oluştu:", error);
-    throw error;
+    console.error("Mesaj gönderilirken hata oluştu:", error); // Loglama
+    throw error; // Hata fırlatılıyor
   }
 };
 

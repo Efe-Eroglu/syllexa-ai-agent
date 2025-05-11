@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
+from app.services.gpt_service import get_assistant_response
 from app.db.database import get_db
 from app.models.chat import Chat, ChatMessage, ChatFile
 from app.schemas.chat import (
@@ -13,6 +14,11 @@ from app.schemas.chat import (
 )
 import os
 from app.api.auth_routes import get_current_user
+import logging
+
+# Hata loglamayı başlatıyoruz
+logging.basicConfig(level=logging.DEBUG)
+
 
 router = APIRouter()
 UPLOAD_DIRECTORY = "./uploads"
@@ -64,25 +70,56 @@ def delete_chat(
     return {"message": f"Sohbet (ID={chat_id}) başarıyla silindi."}
 
 
-# 💬 [4] Mesaj gönder
+# 🎯 [4] Mesaj gönder ve GPT yanıtını ekle
 @router.post("/chats/send", response_model=ChatMessageOut)
 def send_message(
     message: ChatMessageCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user)  # Kimlik doğrulama
 ):
-    new_msg = ChatMessage(
-        chat_id=message.chat_id,
-        user_id=current_user.id,
-        role=message.role,
-        message=message.message,
-        timestamp=datetime.utcnow()
-    )
-    db.add(new_msg)
-    db.commit()
-    db.refresh(new_msg)
-    return new_msg
+    # Kullanıcının mesajını veritabanına kaydet
+    try:
+        new_msg = ChatMessage(
+            chat_id=message.chat_id,
+            user_id=current_user.id,
+            role=message.role,
+            message=message.message,
+            timestamp=datetime.utcnow()
+        )
+        db.add(new_msg)
+        db.commit()
+        db.refresh(new_msg)
+        logging.debug(f"New message saved: {new_msg}")
+    except Exception as e:
+        logging.error(f"Error while saving message: {str(e)}")
+        raise HTTPException(status_code=500, detail="Message saving failed")
 
+    # Mesajı asistan ID'sine gönder
+    try:
+        assistant_response = get_assistant_response(message.message)  # Asistanla etkileşim
+        logging.debug(f"Assistant response: {assistant_response}")
+    except Exception as e:
+        logging.error(f"Error while getting assistant response: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Asistan yanıtı alınırken hata oluştu: {str(e)}")
+
+    # Asistan yanıtını veritabanına kaydet
+    try:
+        gpt_msg = ChatMessage(
+            chat_id=message.chat_id,
+            user_id=current_user.id,
+            role="assistant",  # GPT rolü
+            message=assistant_response,
+            timestamp=datetime.utcnow()
+        )
+        db.add(gpt_msg)
+        db.commit()
+        db.refresh(gpt_msg)
+        logging.debug(f"Assistant response saved: {gpt_msg}")
+    except Exception as e:
+        logging.error(f"Error while saving assistant response: {str(e)}")
+        raise HTTPException(status_code=500, detail="Assistant response saving failed")
+
+    return gpt_msg
 
 # 📨 [5] Belirli sohbetin mesajlarını getir
 @router.get("/chats/{chat_id}/messages", response_model=List[ChatMessageOut])

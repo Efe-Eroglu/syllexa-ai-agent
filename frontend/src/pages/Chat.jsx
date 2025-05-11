@@ -111,6 +111,7 @@ export default function Chat() {
       return;
     }
 
+    // Kullanıcı mesajını ekliyoruz
     const newMessage = {
       id: messages.length + 1,
       text: inputText,
@@ -119,12 +120,18 @@ export default function Chat() {
     };
 
     setMessages((prev) => [...prev, newMessage]);
-    setInputText("");
+    setInputText(""); // Mesaj kutusunu sıfırlıyoruz
 
     try {
+      // Backend'e mesajı gönderiyoruz ve yanıtı alıyoruz
       const response = await sendMessage(chatId, inputText, token);
-      const aiText = response.reply || "AI'dan yanıt alınamadı.";
 
+      console.log("Backend'den alınan yanıt:", response); // Backend yanıtını logluyoruz
+
+      // Backend'den dönen yanıtı kontrol ediyoruz
+      const aiText = response.reply || "AI'dan yanıt alınamadı."; // Yanıtı kontrol et
+
+      // Asistanın yanıtını mesajlar arasına ekliyoruz
       const aiMessage = {
         id: messages.length + 2,
         text: aiText,
@@ -134,6 +141,7 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, aiMessage]);
 
+      // Asistan yanıtını veritabanına göndermek için backend'e tekrar istek yapıyoruz
       await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
