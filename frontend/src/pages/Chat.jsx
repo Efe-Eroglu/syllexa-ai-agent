@@ -9,15 +9,20 @@ import {
   FiTrash2,
   FiLogOut,
   FiX,
+  FiVolume2,
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiRobot2Line } from "react-icons/ri";
 import "../styles/pages/chat.css";
-import { startRecording, stopRecording } from "../utils/useRecorder";
+import "../styles/components/tts-settings.css";
+import { startRecording, stopRecording, createVolumeAnalyzer } from "../utils/useRecorder";
+import { textToSpeech, playAudio } from "../utils/tts";
+import { useEnhancedSpeechRecognition } from "../utils/useSpeechRecognition";
 import { WS_BASE_URL } from "../config";
 import { logoutUser } from "../api/auth";
 import { notifySuccess, notifyError, notifyInfo } from "../utils/toast";
 import axios from "axios";
+import TTSSettings from "../components/TTSSettings";
 import {
   fetchChats,
   createChat,
@@ -41,6 +46,7 @@ export default function Chat() {
 
   const [chats, setChats] = useState([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showTTSSettings, setShowTTSSettings] = useState(false);
   const [inputText, setInputText] = useState("");
   const [chatFiles, setChatFiles] = useState([]);
   const [selectedChatOptions, setSelectedChatOptions] = useState(null);
@@ -50,6 +56,11 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [recognitionText, setRecognitionText] = useState("");
+  const [recognitionInstance, setRecognitionInstance] = useState(null);
+  const [volumeLevel, setVolumeLevel] = useState(0);
+  const volumeAnalyzerRef = React.useRef(null);
 
   const handleToggleOptions = (chatId) => {
     setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
@@ -75,26 +86,22 @@ export default function Chat() {
 
     if (token) {
       try {
-        console.log("Sohbet silme işlemi başlatıldı..."); // Loglama: Başlangıç
+        console.log("Sohbet silme işlemi başlatıldı...");
 
-        // 1. API çağrısı yaparak sohbeti siliyoruz
         await deleteChat(chatId, token);
 
-        console.log(`Sohbet başarıyla silindi: ${chatId}`); // Loglama: Başarı
+        console.log(`Sohbet başarıyla silindi: ${chatId}`);
 
-        // 2. Sohbeti sohbet listesinden çıkarıyoruz
         const updatedChats = chats.filter((chat) => chat.id !== chatId);
         setChats(updatedChats);
 
-        // 3. Kullanıcıya başarı mesajı gösteriyoruz
         notifyInfo("Sohbet başarıyla silindi.");
       } catch (error) {
-        // 4. Hata durumu: Hata mesajını logluyoruz
         console.error("Sohbet silinirken hata oluştu:", error);
         notifyError("Sohbet silinirken bir hata oluştu.");
       }
     } else {
-      console.log("Token bulunamadı!"); // Token yoksa loglama
+      console.log("Token bulunamadı!");
       notifyError("Giriş yapmadınız. Lütfen giriş yapın.");
     }
   };
@@ -111,7 +118,6 @@ export default function Chat() {
       return;
     }
 
-    // Kullanıcı mesajını ekliyoruz
     const newMessage = {
       id: messages.length + 1,
       text: inputText,
@@ -120,28 +126,25 @@ export default function Chat() {
     };
 
     setMessages((prev) => [...prev, newMessage]);
-    setInputText(""); // Mesaj kutusunu sıfırlıyoruz
+    setInputText("");
 
     try {
-      // Backend'e mesajı gönderiyoruz ve yanıtı alıyoruz
       const response = await sendMessage(chatId, inputText, token);
 
-      console.log("Backend'den alınan yanıt:", response); // Backend yanıtını logluyoruz
+      console.log("Backend'den alınan yanıt:", response);
 
-      // Backend'den dönen yanıtı kontrol ediyoruz
-      const aiText = response.reply || "AI'dan yanıt alınamadı."; // Yanıtı kontrol et
+      const aiText = response.reply || "AI'dan yanıt alınamadı.";
 
-      // Asistanın yanıtını mesajlar arasına ekliyoruz
       const aiMessage = {
         id: messages.length + 2,
         text: aiText,
         isUser: false,
         timestamp: new Date().toLocaleTimeString(),
+        auto_tts_flag: true
       };
 
       setMessages((prev) => [...prev, aiMessage]);
 
-      // Asistan yanıtını veritabanına göndermek için backend'e tekrar istek yapıyoruz
       await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
@@ -149,28 +152,76 @@ export default function Chat() {
     }
   };
 
+  const speakMessage = async (text) => {
+    const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
+    const apiKey = localStorage.getItem("elevenlabs_api_key");
+    
+    if (!isTtsEnabled || !apiKey) return;
+    
+    try {
+      setIsSpeaking(true);
+      const audioData = await textToSpeech(text, apiKey);
+      playAudio(audioData);
+    } catch (error) {
+      console.error("Ses sentezleme hatası:", error);
+      
+      if (error.message.includes('404')) {
+        console.warn("Ses bulunamadı. Varsayılan ses kullanılacak.");
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        notifyError("API anahtarı geçersiz. Lütfen ayarları kontrol edin.");
+      }
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
+  const speakSpecificMessage = async (messageText) => {
+    const apiKey = localStorage.getItem('elevenlabs_api_key');
+    if (!apiKey) {
+      notifyError("Lütfen Eleven Labs API anahtarını ayarlarda tanımlayın.");
+      setShowTTSSettings(true);
+      return;
+    }
+    
+    try {
+      setIsSpeaking(true);
+      
+      const audioData = await textToSpeech(messageText, apiKey);
+      playAudio(audioData);
+      
+    } catch (error) {
+      console.error("Ses sentezleme hatası:", error);
+      
+      if (error.message.includes('404')) {
+        notifyError("Ses bulunamadı. Varsayılan ses kullanılacak.");
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        notifyError("API anahtarı geçersiz. Lütfen doğru API anahtarını girin.");
+        setShowTTSSettings(true);
+      } else {
+        notifyError("Ses oluşturulamadı: " + error.message);
+      }
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
   const handleNewChat = async () => {
-    // 1. Token'ı kontrol edelim
     const token = localStorage.getItem("access_token");
     console.log("Token kontrolü: ", token);
 
     if (token) {
       try {
-        // 2. Yeni sohbet başlığını ayarlıyoruz
         const chatTitle = `Yeni Sohbet ${chats.length + 1}`;
         console.log("Yeni sohbet başlığı: ", chatTitle);
 
-        // 3. createChat fonksiyonunu çağırıyoruz
         console.log("createChat çağrıldı...");
         const newChat = await createChat(chatTitle, token);
         console.log("Yeni sohbet başarıyla oluşturuldu:", newChat);
 
-        // 4. Yeni sohbeti ekliyoruz
         setChats([...chats, newChat]);
-        setInputText(""); // Inputu sıfırlıyoruz
+        setInputText("");
         console.log("Sohbetler güncellendi: ", chats);
       } catch (error) {
-        // 5. Hata durumunu logluyoruz
         console.error("Sohbet oluşturulurken hata oluştu:", error);
         notifyError("Sohbet oluşturulurken bir hata oluştu.");
       }
@@ -194,7 +245,7 @@ export default function Chat() {
     }
 
     try {
-      await renameChat(editingChatId, editingTitle, token); // 👈 direkt chat.js fonksiyonunu çağırıyoruz
+      await renameChat(editingChatId, editingTitle, token);
 
       setChats((prevChats) =>
         prevChats.map((chat) =>
@@ -250,31 +301,155 @@ export default function Chat() {
     }
   };
 
+  const handleRecognitionResult = (text, isFinal) => {
+    setRecognitionText(text);
+  };
+
+  const handleRecognitionError = (error) => {
+    console.error("Konuşma tanıma hatası:", error);
+    notifyError(error);
+    setIsRecording(false);
+  };
+
+  const handleFinalRecognition = (finalText) => {
+    if (finalText.trim()) {
+      const newMessage = {
+        id: messages.length + 1,
+        text: finalText,
+        isUser: true,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      
+      setMessages((prev) => [...prev, newMessage]);
+      
+      sendMessageToServer(finalText);
+    }
+    
+    setRecognitionText("");
+  };
+
+  const sendMessageToServer = async (text) => {
+    const token = localStorage.getItem("access_token");
+    const chatId = selectedChatDetails?.id || chats[0]?.id;
+
+    if (!chatId) {
+      notifyError("Lütfen önce bir sohbet seçin.");
+      return;
+    }
+
+    try {
+      const response = await sendMessage(chatId, text, token);
+
+      console.log("Backend'den alınan yanıt:", response);
+
+      const aiText = response.reply || "AI'dan yanıt alınamadı.";
+
+      const aiMessage = {
+        id: messages.length + 2,
+        text: aiText,
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString(),
+        auto_tts_flag: true
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+
+      await sendMessage(chatId, aiText, token, "ai");
+    } catch (error) {
+      console.error("Mesaj gönderme hatası:", error);
+      notifyError("Mesaj gönderilemedi.");
+    }
+  };
+
   const toggleRecording = async () => {
     if (!isRecording) {
       setIsRecording(true);
-      await startRecording();
+      setRecognitionText("");
+      
+      const recordingStarted = await startRecording({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 44100,
+      });
+      
+      if (!recordingStarted) {
+        notifyError("Mikrofon erişimi sağlanamadı.");
+        setIsRecording(false);
+        return;
+      }
+      
+      volumeAnalyzerRef.current = createVolumeAnalyzer((level) => {
+        setVolumeLevel(level);
+      });
+      
+      const speechRecognition = useEnhancedSpeechRecognition(
+        (text, isFinal) => {
+          setRecognitionText(text);
+          console.log(`Tanıma: "${text}" ${isFinal ? '(Final)' : '(Ara)'}`);
+        },
+        (error) => {
+          console.error("Konuşma tanıma hatası:", error);
+          notifyError(error);
+          setIsRecording(false);
+        },
+        (finalText) => {
+          if (finalText && finalText.trim().length > 0) {
+            console.log(`Final tanıma: "${finalText}"`);
+            
+            const newMessage = {
+              id: messages.length + 1,
+              text: finalText,
+              isUser: true,
+              timestamp: new Date().toLocaleTimeString(),
+            };
+            
+            setMessages((prev) => [...prev, newMessage]);
+            
+            sendMessageToServer(finalText);
+            
+            stopRecording();
+            setIsRecording(false);
+            setRecognitionInstance(null);
+            setRecognitionText("");
+          }
+        },
+        {
+          confidenceThreshold: 0.5,
+          autoStopTimeout: 3000,
+        }
+      );
+      
+      const started = speechRecognition.startListening();
+      
+      if (started) {
+        setRecognitionInstance(speechRecognition);
+        notifyInfo("Konuşma tanıma başladı. Konuşunuz...");
+      } else {
+        stopRecording();
+        setIsRecording(false);
+        notifyError("Konuşma tanıma başlatılamadı");
+      }
     } else {
       setIsRecording(false);
-      const wavBlob = await stopRecording();
-
-      const ws = new WebSocket(`${WS_BASE_URL}/speech`);
-      ws.onopen = () => {
-        ws.send(wavBlob);
-      };
-
-      ws.onmessage = (event) => {
-        const text = event.data.trim();
-        if (text) {
-          const newMessage = {
-            id: messages.length + 1,
-            text: text,
-            isUser: true,
-            timestamp: new Date().toLocaleTimeString(),
-          };
-          setMessages((prev) => [...prev, newMessage]);
+      
+      if (recognitionInstance) {
+        if (recognitionText.trim()) {
+          handleFinalRecognition(recognitionText.trim());
         }
-      };
+        
+        recognitionInstance.stopListening();
+        setRecognitionInstance(null);
+      }
+      
+      if (volumeAnalyzerRef.current) {
+        volumeAnalyzerRef.current();
+        volumeAnalyzerRef.current = null;
+      }
+      setVolumeLevel(0);
+      
+      await stopRecording();
+      setRecognitionText("");
     }
   };
 
@@ -283,16 +458,16 @@ export default function Chat() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token"); // Token'ı yerel depolamadan alıyoruz
-    console.log("Token:", token); // Loglama: Token alındı
+    const token = localStorage.getItem("access_token");
+    console.log("Token:", token);
     if (token) {
       fetchChats(token)
         .then((data) => {
-          console.log("Alınan sohbetler:", data); // Loglama: Sohbet verisi alındı
-          setChats(data); // API'den gelen sohbetleri state'e kaydediyoruz
+          console.log("Alınan sohbetler:", data);
+          setChats(data);
         })
         .catch((error) => {
-          console.error("Sohbetler alınırken bir hata oluştu:", error); // Loglama: Hata
+          console.error("Sohbetler alınırken bir hata oluştu:", error);
         });
     }
   }, []);
@@ -317,6 +492,39 @@ export default function Chat() {
         });
     }
   }, [selectedChatDetails]);
+  
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      
+      if (!lastMessage.isUser && !lastMessage.file && lastMessage.auto_tts_flag) {
+        lastMessage.auto_tts_flag = false;
+        
+        const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
+        const isAutoTtsEnabled = localStorage.getItem("auto_tts_enabled") !== "false";
+        
+        if (isTtsEnabled && isAutoTtsEnabled) {
+          setTimeout(() => {
+            speakMessage(lastMessage.text);
+          }, 300);
+        }
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (volumeAnalyzerRef.current) {
+        volumeAnalyzerRef.current();
+        volumeAnalyzerRef.current = null;
+      }
+      
+      if (recognitionInstance) {
+        recognitionInstance.stopListening();
+      }
+      stopRecording();
+    };
+  }, []);
 
   return (
     <>
@@ -366,7 +574,7 @@ export default function Chat() {
                       <button
                         onClick={() => {
                           handleShowDetails(chat.id);
-                          setSelectedChatOptions(null); // 👈 menüyü kapat
+                          setSelectedChatOptions(null);
                         }}
                       >
                         Detaylar
@@ -375,7 +583,7 @@ export default function Chat() {
                       <button
                         onClick={() => {
                           handleRenameChat(chat.id, chat.title);
-                          setSelectedChatOptions(null); // 👈 menüyü kapat
+                          setSelectedChatOptions(null);
                         }}
                       >
                         İsim Değiştir
@@ -384,7 +592,7 @@ export default function Chat() {
                       <button
                         onClick={() => {
                           handleDeleteChat(chat.id);
-                          setSelectedChatOptions(null); // 👈 menüyü kapat
+                          setSelectedChatOptions(null);
                         }}
                       >
                         Sil
@@ -407,7 +615,6 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Main Chat Area */}
         <div className="main-chat-area">
           <div className="chat-header">
             <button
@@ -443,8 +650,37 @@ export default function Chat() {
                   )}
                   <div className="message-timestamp">{message.timestamp}</div>
                 </div>
+                {!message.isUser && !message.file && (
+                  <button 
+                    className={`speak-button ${isSpeaking ? 'speaking' : ''}`} 
+                    onClick={() => speakSpecificMessage(message.text)}
+                    disabled={isSpeaking}
+                  >
+                    <FiVolume2 />
+                  </button>
+                )}
               </div>
             ))}
+            
+            {isRecording && recognitionText && (
+              <div className="message user recording-message">
+                <div className="message-avatar">
+                  <AiOutlineUser />
+                </div>
+                <div className="message-content">
+                  <div className="message-text">
+                    {recognitionText}
+                    <span className="recording-indicator"></span>
+                  </div>
+                  <div className="volume-meter-container">
+                    <div 
+                      className="volume-meter" 
+                      style={{ width: `${volumeLevel}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <form className="chat-input-area" onSubmit={handleSend}>
@@ -461,6 +697,7 @@ export default function Chat() {
                 type="button"
                 className={`record-button ${isRecording ? "recording" : ""}`}
                 onClick={toggleRecording}
+                title={isRecording ? "Kaydı Durdur" : "Sesli Mesaj Gönder"}
               >
                 <FiMic />
               </button>
@@ -552,6 +789,14 @@ export default function Chat() {
             </div>
 
             <div className="modern-modal-content">
+              <button 
+                className="modern-btn"
+                onClick={() => setShowTTSSettings(true)}
+              >
+                <FiVolume2 className="btn-icon" />
+                Ses Sentezi Ayarları
+              </button>
+
               <button
                 className="modern-btn danger"
                 onClick={() => {
@@ -569,6 +814,33 @@ export default function Chat() {
                 <FiLogOut className="btn-icon" />
                 Çıkış Yap
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTTSSettings && (
+        <div
+          className="modern-modal-overlay"
+          onClick={() => setShowTTSSettings(false)}
+        >
+          <div className="modern-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                <FiVolume2 className="icon" />
+                Ses Ayarları
+              </h2>
+
+              <button
+                className="icon-btn"
+                onClick={() => setShowTTSSettings(false)}
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="modern-modal-content">
+              <TTSSettings onClose={() => setShowTTSSettings(false)} />
             </div>
           </div>
         </div>

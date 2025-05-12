@@ -1,5 +1,6 @@
 # backend/app/core/config.py
 
+from typing import Optional
 from pydantic_settings import BaseSettings   # pydantic-settings kullanıyoruz
 
 class Settings(BaseSettings):
@@ -20,8 +21,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str 
     ASSISTANT_ID: str
     
-    class Config:
-        env_file = ".env"
+    # ElevenLabs API
+    ELEVENLABS_API_KEY: Optional[str] = None
+    
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore"
+    }
 
 # Ayarları yükle
 settings = Settings()
