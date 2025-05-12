@@ -138,26 +138,16 @@ export default function Chat() {
       const aiText = response.reply || "AI'dan yanıt alınamadı."; // Yanıtı kontrol et
 
       // Asistanın yanıtını mesajlar arasına ekliyoruz
+      // auto_tts_flag ekleyelim ki useEffect'te bu mesajın otomatik seslendirilmesi gerektiğini bilelim
       const aiMessage = {
         id: messages.length + 2,
         text: aiText,
         isUser: false,
         timestamp: new Date().toLocaleTimeString(),
+        auto_tts_flag: true // Otomatik seslendirme için işaret
       };
 
       setMessages((prev) => [...prev, aiMessage]);
-
-      // TTS ile asistan yanıtını seslendiriyoruz
-      // Otomatik seslendirme için kullanıcı ayarlarını kontrol ediyoruz
-      const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
-      if (isTtsEnabled) {
-        try {
-          await speakMessage(aiText);
-        } catch (error) {
-          console.error("Otomatik konuşma hatası:", error);
-          // Hata durumunda notification göstermiyoruz çünkü speakMessage içinde zaten gösteriliyor
-        }
-      }
 
       // Asistan yanıtını veritabanına göndermek için backend'e tekrar istek yapıyoruz
       await sendMessage(chatId, aiText, token, "ai");
@@ -203,7 +193,6 @@ export default function Chat() {
     
     try {
       setIsSpeaking(true);
-      notifyInfo("Sesli yanıt oluşturuluyor...");
       
       const audioData = await textToSpeech(messageText, apiKey);
       playAudio(audioData);
@@ -387,6 +376,10 @@ export default function Chat() {
             timestamp: msg.timestamp || new Date().toLocaleTimeString(),
           }));
           setMessages(formattedMessages);
+          
+          // Bu mesajlar ilk yüklendiğinde otomatik seslendirmiyoruz
+          // Son AI mesajını otomatik olarak SESLENDIRME
+          // Kullanıcı ses düğmesine basarak dinleyebilir
         })
         .catch((error) => {
           console.error("Mesajlar yüklenirken hata:", error);
@@ -394,6 +387,32 @@ export default function Chat() {
         });
     }
   }, [selectedChatDetails]);
+  
+  // Mesajlar değiştiğinde otomatik seslendirme
+  useEffect(() => {
+    // Mesajlar dizisi boş değilse ve en az bir mesaj varsa
+    if (messages.length > 0) {
+      // Son mesajı al
+      const lastMessage = messages[messages.length - 1];
+      
+      // Eğer son mesaj asistandan geldiyse (isUser=false) ve auto_tts_flag varsa seslendir
+      if (!lastMessage.isUser && !lastMessage.file && lastMessage.auto_tts_flag) {
+        // auto_tts_flag'i silelim ki bu mesaj bir daha seslendirilmesin
+        lastMessage.auto_tts_flag = false;
+        
+        // Otomatik seslendirme için kullanıcı ayarlarını kontrol et
+        const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
+        const isAutoTtsEnabled = localStorage.getItem("auto_tts_enabled") !== "false";
+        
+        if (isTtsEnabled && isAutoTtsEnabled) {
+          // Mesaj görüntülendikten sonra seslendirmeyi başlat (kısa bir gecikmeyle)
+          setTimeout(() => {
+            speakMessage(lastMessage.text);
+          }, 300);
+        }
+      }
+    }
+  }, [messages]); // Mesajlar değiştiğinde bu efekti çalıştır
 
   return (
     <>

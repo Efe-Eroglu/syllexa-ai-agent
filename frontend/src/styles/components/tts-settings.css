@@ -198,4 +198,25 @@ input:checked + .toggle-slider:before {
   font-size: 0.8rem;
   color: #777;
   margin-top: 0.25rem;
+}
+
+.feature-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.feature-icon {
+  color: #3498db;
+  font-size: 1.1rem;
+}
+
+.toggle-slider.disabled {
+  background-color: #e0e0e0;
+  cursor: not-allowed;
+}
+
+input:checked + .toggle-slider.disabled {
+  background-color: #97c8eb;
 } 
