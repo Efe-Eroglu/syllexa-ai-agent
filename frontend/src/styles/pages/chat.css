@@ -697,3 +697,52 @@
   border-color: #818cf8;
   background: rgba(129, 140, 248, 0.08);
 }
+
+/* Speak button - Türkçe için optimize edilmiş */
+.speak-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background-color: transparent;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  opacity: 0.5;
+}
+
+.speak-button:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  opacity: 1;
+}
+
+.speak-button.speaking {
+  color: #6366f1;
+  animation: turkishPulse 1.5s infinite;
+  opacity: 1;
+  background-color: rgba(99, 102, 241, 0.15);
+}
+
+@keyframes turkishPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+.message:hover .speak-button {
+  opacity: 0.8;
+}

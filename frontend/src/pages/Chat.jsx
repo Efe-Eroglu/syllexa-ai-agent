@@ -9,15 +9,19 @@ import {
   FiTrash2,
   FiLogOut,
   FiX,
+  FiVolume2,
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiRobot2Line } from "react-icons/ri";
 import "../styles/pages/chat.css";
+import "../styles/components/tts-settings.css";
 import { startRecording, stopRecording } from "../utils/useRecorder";
+import { textToSpeech, playAudio } from "../utils/tts";
 import { WS_BASE_URL } from "../config";
 import { logoutUser } from "../api/auth";
 import { notifySuccess, notifyError, notifyInfo } from "../utils/toast";
 import axios from "axios";
+import TTSSettings from "../components/TTSSettings";
 import {
   fetchChats,
   createChat,
@@ -41,6 +45,7 @@ export default function Chat() {
 
   const [chats, setChats] = useState([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showTTSSettings, setShowTTSSettings] = useState(false);
   const [inputText, setInputText] = useState("");
   const [chatFiles, setChatFiles] = useState([]);
   const [selectedChatOptions, setSelectedChatOptions] = useState(null);
@@ -50,6 +55,7 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const handleToggleOptions = (chatId) => {
     setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
@@ -141,11 +147,82 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, aiMessage]);
 
+      // TTS ile asistan yanıtını seslendiriyoruz
+      // Otomatik seslendirme için kullanıcı ayarlarını kontrol ediyoruz
+      const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
+      if (isTtsEnabled) {
+        try {
+          await speakMessage(aiText);
+        } catch (error) {
+          console.error("Otomatik konuşma hatası:", error);
+          // Hata durumunda notification göstermiyoruz çünkü speakMessage içinde zaten gösteriliyor
+        }
+      }
+
       // Asistan yanıtını veritabanına göndermek için backend'e tekrar istek yapıyoruz
       await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
       notifyError("Mesaj gönderilemedi.");
+    }
+  };
+
+  // TTS ile mesajı seslendir
+  const speakMessage = async (text) => {
+    const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
+    const apiKey = localStorage.getItem("elevenlabs_api_key");
+    
+    if (!isTtsEnabled || !apiKey) return;
+    
+    try {
+      setIsSpeaking(true);
+      const audioData = await textToSpeech(text, apiKey);
+      playAudio(audioData);
+    } catch (error) {
+      console.error("Ses sentezleme hatası:", error);
+      
+      // Sessiz hata - kullanıcıya bildirim göstermiyoruz (otomatik konuşma için)
+      if (error.message.includes('404')) {
+        console.warn("Ses bulunamadı. Varsayılan ses kullanılacak.");
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        notifyError("API anahtarı geçersiz. Lütfen ayarları kontrol edin.");
+      }
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
+  // Belirli bir mesajı seslendir
+  const speakSpecificMessage = async (messageText) => {
+    const apiKey = localStorage.getItem('elevenlabs_api_key');
+    if (!apiKey) {
+      notifyError("Lütfen Eleven Labs API anahtarını ayarlarda tanımlayın.");
+      setShowTTSSettings(true);
+      return;
+    }
+    
+    try {
+      setIsSpeaking(true);
+      notifyInfo("Sesli yanıt oluşturuluyor...");
+      
+      const audioData = await textToSpeech(messageText, apiKey);
+      playAudio(audioData);
+      
+      notifySuccess("Sesli yanıt başarıyla oluşturuldu");
+    } catch (error) {
+      console.error("Ses sentezleme hatası:", error);
+      
+      // Daha açıklayıcı hata mesajları
+      if (error.message.includes('404')) {
+        notifyError("Ses bulunamadı. Varsayılan ses kullanılacak.");
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        notifyError("API anahtarı geçersiz. Lütfen doğru API anahtarını girin.");
+        setShowTTSSettings(true);
+      } else {
+        notifyError("Ses oluşturulamadı: " + error.message);
+      }
+    } finally {
+      setIsSpeaking(false);
     }
   };
 
@@ -443,6 +520,15 @@ export default function Chat() {
                   )}
                   <div className="message-timestamp">{message.timestamp}</div>
                 </div>
+                {!message.isUser && !message.file && (
+                  <button 
+                    className={`speak-button ${isSpeaking ? 'speaking' : ''}`} 
+                    onClick={() => speakSpecificMessage(message.text)}
+                    disabled={isSpeaking}
+                  >
+                    <FiVolume2 />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -552,6 +638,14 @@ export default function Chat() {
             </div>
 
             <div className="modern-modal-content">
+              <button 
+                className="modern-btn"
+                onClick={() => setShowTTSSettings(true)}
+              >
+                <FiVolume2 className="btn-icon" />
+                Ses Sentezi Ayarları
+              </button>
+
               <button
                 className="modern-btn danger"
                 onClick={() => {
@@ -569,6 +663,33 @@ export default function Chat() {
                 <FiLogOut className="btn-icon" />
                 Çıkış Yap
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTTSSettings && (
+        <div
+          className="modern-modal-overlay"
+          onClick={() => setShowTTSSettings(false)}
+        >
+          <div className="modern-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                <FiVolume2 className="icon" />
+                Ses Ayarları
+              </h2>
+
+              <button
+                className="icon-btn"
+                onClick={() => setShowTTSSettings(false)}
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="modern-modal-content">
+              <TTSSettings onClose={() => setShowTTSSettings(false)} />
             </div>
           </div>
         </div>
