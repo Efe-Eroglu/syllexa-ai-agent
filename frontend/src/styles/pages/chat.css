@@ -746,3 +746,56 @@
 .message:hover .speak-button {
   opacity: 0.8;
 }
+
+/* Speech Recognition Styles */
+.recording-message {
+  opacity: 0.8;
+}
+
+.recording-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  margin-left: 8px;
+  animation: pulse 1.5s infinite;
+}
+
+/* Volume Meter Styles */
+.volume-meter-container {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  overflow: hidden;
+}
+
+.volume-meter {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 2px;
+  transition: width 0.1s ease-out;
+}
+
+.record-button.recording {
+  color: #ef4444;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
