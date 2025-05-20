@@ -6,3 +6,9 @@ psycopg2-binary
 pydantic
 passlib[bcrypt]
 python-jose[cryptography]
+langchain
+langchain-openai
+pypdf
+python-docx
+chromadb
+sentence-transformers
