@@ -1,8 +1,8 @@
 <div align="center">
-  <h1>Syllexa AI</h1>
+  <h1>🧠 Syllexa AI</h1>
   <p>
-    <strong>Disleksi dostu yapay zeka asistanı</strong><br>
-    <em>Dyslexia-friendly AI assistant</em>
+    <strong>- Disleksi dostu yapay zeka asistanı - </strong><br>
+    <em>- Dyslexia-friendly AI assistant -</em>
   </p>
 </div>
 
