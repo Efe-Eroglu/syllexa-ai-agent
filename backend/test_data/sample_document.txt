@@ -1,0 +1,33 @@
+Syllexa AI Projesi: Disleksi Dostu Yapay Zeka Asistanı
+
+Proje Özeti:
+Syllexa AI, disleksik bireylere özel olarak tasarlanmış, öğrenme süreçlerini kolaylaştıran bir yapay zeka asistanıdır. Disleksi, okuma, yazma ve heceleme becerilerini etkileyen, beyindeki dil işleme süreçlerinde yaşanan nörolojik bir farklılıktır. Syllexa AI, disleksi tanısı almış bireylerin öğrenme deneyimlerini iyileştirmek amacıyla geliştirilmiştir.
+
+Temel Özellikler:
+1. Sesli Etkileşim: Kullanıcılar metin yazmak yerine sesli komutlarla asistanı kullanabilirler.
+2. Metin-Ses Dönüşümü (TTS): Tüm yazılı içerikler, disleksi dostu özel bir ses teknolojisiyle seslendirilir.
+3. Özel Arayüz: Disleksik bireylerin algılamasını kolaylaştıran özel font ve renk seçenekleri.
+4. Kişiselleştirilmiş Öğrenme: Kullanıcının öğrenme stiline ve zorluklarına göre uyarlanabilen içerik sunar.
+5. Belge Analizi: Yüklenen belgeler üzerinde RAG (Retrieval Augmented Generation) teknolojisiyle içerik analizi yapabilir.
+
+Teknik Altyapı:
+- Frontend: React, JavaScript, Tailwind CSS
+- Backend: Python, FastAPI
+- Veritabanı: PostgreSQL, ChromaDB (vektör veritabanı)
+- NLP: OpenAI API, LangChain, Transformers
+- Diğer: ElevenLabs (Ses sentezi), WebSockets (Gerçek zamanlı iletişim)
+
+Syllexa AI'nın Çalışma Prensibi:
+1. Kullanıcı bir soru sorduğunda veya bir belge yüklediğinde sistem bu içeriği analiz eder.
+2. Yapay zeka modeli, disleksik bireylerin anlayabileceği şekilde sadeleştirilmiş ve net yanıtlar üretir.
+3. Üretilen yanıt, kullanıcı tercihine göre sesli olarak iletilir veya disleksik bireylere uygun fontlarla görüntülenir.
+4. Yüklenen belgeler vektör veritabanında depolanır ve gelecekteki sorulara daha doğru yanıtlar vermek için referans olarak kullanılır.
+
+Yapay Zeka Eğitimi:
+Syllexa AI'nın temel yapay zeka modeli, özellikle disleksik bireylerin ihtiyaçlarına yönelik örneklerle ince ayar eğitimine tabi tutulmuştur. Model, karmaşık metinleri sadeleştirme, anahtar bilgileri vurgulama ve açık, anlaşılır yanıtlar üretme konusunda özelleştirilmiştir.
+
+2024 Yılı Hedefleri:
+- Mobil uygulama geliştirme
+- Çoklu dil desteğinin genişletilmesi
+- Eğitim kurumlarıyla iş birliği protokolleri
+- RAG teknolojisinin geliştirilmesi ve kişiselleştirilmiş doküman anlama kabiliyetlerinin artırılması 

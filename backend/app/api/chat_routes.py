@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 from app.services.gpt_service import get_assistant_response
+from app.services.rag_service import RAGService
 from app.db.database import get_db
 from app.models.chat import Chat, ChatMessage, ChatFile
 from app.schemas.chat import (
@@ -94,9 +95,13 @@ def send_message(
         logging.error(f"Error while saving message: {str(e)}")
         raise HTTPException(status_code=500, detail="Message saving failed")
 
-    # Mesajı asistan ID'sine gönder
+    # Mesajı asistan ID'sine gönder (RAG entegrasyonu ile)
     try:
-        assistant_response = get_assistant_response(message.message)  # Asistanla etkileşim
+        assistant_response = get_assistant_response(
+            message=message.message,
+            chat_id=message.chat_id,  # Sohbet ID'sini ilet
+            db=db  # Veritabanı oturumunu ilet
+        )
         logging.debug(f"Assistant response: {assistant_response}")
     except Exception as e:
         logging.error(f"Error while getting assistant response: {str(e)}")
@@ -131,7 +136,7 @@ def get_chat_messages(
     return db.query(ChatMessage).filter(ChatMessage.chat_id == chat_id).all()
 
 
-# 📤 [6] Dosya yükle (chat'e ait)
+# 📤 [6] Dosya yükle (chat'e ait) ve RAG işlemi
 @router.post("/chats/{chat_id}/upload", response_model=ChatFileOut)
 async def upload_file(
     chat_id: int,
@@ -139,22 +144,80 @@ async def upload_file(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
+    # Dosya türünü kontrol et
+    allowed_extensions = ['.pdf', '.docx', '.txt']
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Desteklenmeyen dosya formatı. Desteklenen formatlar: {', '.join(allowed_extensions)}"
+        )
+    
+    # Dosyayı kaydet
     filepath = None  
     if file:
-        filepath = os.path.join(UPLOAD_DIRECTORY, file.filename)
+        # Klasör yoksa oluştur
+        chat_upload_dir = os.path.join(UPLOAD_DIRECTORY, str(chat_id))
+        if not os.path.exists(chat_upload_dir):
+            os.makedirs(chat_upload_dir)
+        
+        # Dosyayı sohbete özel alt klasöre kaydet
+        filepath = os.path.join(chat_upload_dir, file.filename)
         with open(filepath, "wb") as f:
-            f.write(await file.read())
+            content = await file.read()
+            f.write(content)
 
+    # Veritabanına dosya kaydı ekle
     new_file = ChatFile(
         chat_id=chat_id,
         filename=file.filename,
         filepath=filepath, 
         mimetype=file.content_type,
         size=len(file.filename),
+        uploaded_at=datetime.utcnow()
     )
     db.add(new_file)
     db.commit()
     db.refresh(new_file)
+    
+    # RAG için dosyayı işle
+    try:
+        rag_service = RAGService(db=db)
+        file_metadata = {
+            "source": file.filename,
+            "chat_id": str(chat_id),
+            "mimetype": file.content_type,
+            "uploaded_at": datetime.utcnow().isoformat()
+        }
+        
+        # Dosyayı RAG sistemine ekle
+        processing_result = rag_service.process_uploaded_file(
+            file_path=filepath,
+            chat_id=chat_id,
+            file_metadata=file_metadata
+        )
+        
+        if processing_result:
+            # Sohbete bilgi mesajı ekle
+            system_msg = ChatMessage(
+                chat_id=chat_id,
+                user_id=current_user.id,
+                role="system",  # Sistem mesajı
+                message=f"'{file.filename}' dosyası yüklendi ve işlendi. Bu dosyadaki bilgiler artık sorularınızı yanıtlamak için kullanılabilir.",
+                timestamp=datetime.utcnow()
+            )
+            db.add(system_msg)
+            db.commit()
+            
+            logging.debug(f"File processed for RAG: {filepath}")
+        else:
+            logging.error(f"RAG processing failed for file: {filepath}")
+            
+    except Exception as e:
+        logging.error(f"Error processing file for RAG: {str(e)}")
+        # İşleme hatası durumunda bile dosya yüklenmiş sayılır, sadece log kaydı tutuyoruz
+    
     return new_file
 
 
