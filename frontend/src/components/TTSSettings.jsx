@@ -14,25 +14,16 @@ const TTSSettings = ({ onClose }) => {
   useEffect(() => {
     // Load saved settings
     const savedApiKey = localStorage.getItem('elevenlabs_api_key');
-    const savedTtsEnabled = localStorage.getItem('tts_enabled');
-    const savedAutoTtsEnabled = localStorage.getItem('auto_tts_enabled');
     const savedSpeechRate = localStorage.getItem('speech_rate');
     const savedStability = localStorage.getItem('tts_stability');
     const savedClarity = localStorage.getItem('tts_clarity');
     
+    // Always set TTS enabled by default
+    localStorage.setItem('tts_enabled', 'true');
+    localStorage.setItem('auto_tts_enabled', 'true');
+    
     if (savedApiKey) {
       setApiKey(savedApiKey);
-    }
-    
-    if (savedTtsEnabled !== null) {
-      setIsTtsEnabled(savedTtsEnabled === 'true');
-    }
-    
-    if (savedAutoTtsEnabled !== null) {
-      setIsAutoTtsEnabled(savedAutoTtsEnabled === 'true');
-    } else {
-      // Varsayılan olarak otomatik seslendirme açık
-      localStorage.setItem('auto_tts_enabled', 'true');
     }
     
     if (savedSpeechRate !== null) {
@@ -51,8 +42,11 @@ const TTSSettings = ({ onClose }) => {
   const saveSettings = () => {
     try {
       localStorage.setItem('elevenlabs_api_key', apiKey);
-      localStorage.setItem('tts_enabled', isTtsEnabled.toString());
-      localStorage.setItem('auto_tts_enabled', isAutoTtsEnabled.toString());
+      
+      // Always enable TTS when saving settings
+      localStorage.setItem('tts_enabled', 'true');
+      localStorage.setItem('auto_tts_enabled', 'true');
+      
       localStorage.setItem('speech_rate', speechRate.toString());
       localStorage.setItem('tts_stability', stability.toString());
       localStorage.setItem('tts_clarity', clarity.toString());
@@ -70,13 +64,13 @@ const TTSSettings = ({ onClose }) => {
       <h3>Türkçe Ses Sentezi Ayarları</h3>
       
       <div className="setting-group">
-        <label htmlFor="tts-toggle">Sesli Yanıtlar</label>
+        <label htmlFor="tts-toggle">Sesli Yanıtlar (Aktif)</label>
         <div className="toggle-switch">
           <input 
             type="checkbox" 
             id="tts-toggle" 
-            checked={isTtsEnabled}
-            onChange={(e) => setIsTtsEnabled(e.target.checked)}
+            checked={true}
+            disabled={true}
           />
           <span className="toggle-slider"></span>
         </div>
@@ -86,19 +80,18 @@ const TTSSettings = ({ onClose }) => {
         <label htmlFor="auto-tts-toggle">
           <div className="feature-label">
             <FiVolume2 className="feature-icon" />
-            <span>Otomatik Seslendirme</span>
+            <span>Otomatik Seslendirme (Aktif)</span>
           </div>
-          <small>Mesajlar geldiğinde otomatik seslendir</small>
+          <small>Mesajlar geldiğinde otomatik seslendirilir</small>
         </label>
         <div className="toggle-switch">
           <input 
             type="checkbox" 
             id="auto-tts-toggle" 
-            checked={isAutoTtsEnabled}
-            onChange={(e) => setIsAutoTtsEnabled(e.target.checked)}
-            disabled={!isTtsEnabled}
+            checked={true}
+            disabled={true}
           />
-          <span className={`toggle-slider ${!isTtsEnabled ? 'disabled' : ''}`}></span>
+          <span className="toggle-slider"></span>
         </div>
       </div>
       

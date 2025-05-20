@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   FiSend,
   FiMenu,
@@ -61,6 +61,7 @@ export default function Chat() {
   const [recognitionInstance, setRecognitionInstance] = useState(null);
   const [volumeLevel, setVolumeLevel] = useState(0);
   const volumeAnalyzerRef = React.useRef(null);
+  const messagesEndRef = useRef(null);
 
   const handleToggleOptions = (chatId) => {
     setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
@@ -95,6 +96,44 @@ export default function Chat() {
         const updatedChats = chats.filter((chat) => chat.id !== chatId);
         setChats(updatedChats);
 
+        if (selectedChatDetails && selectedChatDetails.id === chatId) {
+          if (updatedChats.length > 0) {
+            const sortedChats = [...updatedChats].sort((a, b) => {
+              const dateA = a.updated_at || a.created_at || 0;
+              const dateB = b.updated_at || b.created_at || 0;
+              return new Date(dateB) - new Date(dateA);
+            });
+            
+            const newSelectedChat = sortedChats[0];
+            setSelectedChatDetails(newSelectedChat);
+            
+            getChatMessages(newSelectedChat.id, token)
+              .then((messages) => {
+                const formattedMessages = messages.map((msg, i) => ({
+                  id: i + 1,
+                  text: msg.message,
+                  isUser: msg.role === "student",
+                  timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+                }));
+                setMessages(formattedMessages);
+              })
+              .catch((error) => {
+                console.error("Mesajlar yüklenirken hata:", error);
+              });
+          } else {
+            setSelectedChatDetails(null);
+            setMessages([
+              {
+                id: 1,
+                text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString(),
+                auto_tts_flag: true
+              },
+            ]);
+          }
+        }
+
         notifyInfo("Sohbet başarıyla silindi.");
       } catch (error) {
         console.error("Sohbet silinirken hata oluştu:", error);
@@ -103,6 +142,15 @@ export default function Chat() {
     } else {
       console.log("Token bulunamadı!");
       notifyError("Giriş yapmadınız. Lütfen giriş yapın.");
+    }
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: smooth ? 'smooth' : 'auto',
+        block: 'end'
+      });
     }
   };
 
@@ -127,6 +175,8 @@ export default function Chat() {
 
     setMessages((prev) => [...prev, newMessage]);
     setInputText("");
+    
+    setTimeout(() => scrollToBottom(), 100);
 
     try {
       const response = await sendMessage(chatId, inputText, token);
@@ -144,6 +194,8 @@ export default function Chat() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+      
+      setTimeout(() => scrollToBottom(), 100);
 
       await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
@@ -153,22 +205,29 @@ export default function Chat() {
   };
 
   const speakMessage = async (text) => {
-    const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
+    // Get the API key
     const apiKey = localStorage.getItem("elevenlabs_api_key");
     
-    if (!isTtsEnabled || !apiKey) return;
+    if (!apiKey) {
+      notifyError("Lütfen Eleven Labs API anahtarını ayarlarda tanımlayın.");
+      setShowTTSSettings(true);
+      return;
+    }
     
     try {
       setIsSpeaking(true);
       const audioData = await textToSpeech(text, apiKey);
-      playAudio(audioData);
+      await playAudio(audioData);
     } catch (error) {
       console.error("Ses sentezleme hatası:", error);
       
       if (error.message.includes('404')) {
         console.warn("Ses bulunamadı. Varsayılan ses kullanılacak.");
+        notifyError("Ses bulunamadı. Lütfen ses ayarlarınızı kontrol edin.");
+        setShowTTSSettings(true);
       } else if (error.message.includes('401') || error.message.includes('403')) {
         notifyError("API anahtarı geçersiz. Lütfen ayarları kontrol edin.");
+        setShowTTSSettings(true);
       }
     } finally {
       setIsSpeaking(false);
@@ -187,7 +246,7 @@ export default function Chat() {
       setIsSpeaking(true);
       
       const audioData = await textToSpeech(messageText, apiKey);
-      playAudio(audioData);
+      await playAudio(audioData);
       
     } catch (error) {
       console.error("Ses sentezleme hatası:", error);
@@ -218,9 +277,21 @@ export default function Chat() {
         const newChat = await createChat(chatTitle, token);
         console.log("Yeni sohbet başarıyla oluşturuldu:", newChat);
 
-        setChats([...chats, newChat]);
+        setChats((prevChats) => [...prevChats, newChat]);
+        setSelectedChatDetails(newChat);
+        
+        setMessages([
+          {
+            id: 1,
+            text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString(),
+            auto_tts_flag: true
+          },
+        ]);
+        
         setInputText("");
-        console.log("Sohbetler güncellendi: ", chats);
+        notifySuccess("Yeni sohbet oluşturuldu");
       } catch (error) {
         console.error("Sohbet oluşturulurken hata oluştu:", error);
         notifyError("Sohbet oluşturulurken bir hata oluştu.");
@@ -353,6 +424,8 @@ export default function Chat() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+      
+      setTimeout(() => scrollToBottom(), 100);
 
       await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
@@ -387,6 +460,10 @@ export default function Chat() {
         (text, isFinal) => {
           setRecognitionText(text);
           console.log(`Tanıma: "${text}" ${isFinal ? '(Final)' : '(Ara)'}`);
+          
+          if (text.length > 0) {
+            setTimeout(() => scrollToBottom(), 50);
+          }
         },
         (error) => {
           console.error("Konuşma tanıma hatası:", error);
@@ -412,6 +489,8 @@ export default function Chat() {
             setIsRecording(false);
             setRecognitionInstance(null);
             setRecognitionText("");
+            
+            setTimeout(() => scrollToBottom(), 100);
           }
         },
         {
@@ -465,6 +544,42 @@ export default function Chat() {
         .then((data) => {
           console.log("Alınan sohbetler:", data);
           setChats(data);
+          
+          if (data && data.length > 0) {
+            const sortedChats = [...data].sort((a, b) => {
+              const dateA = a.updated_at || a.created_at || 0;
+              const dateB = b.updated_at || b.created_at || 0;
+              return new Date(dateB) - new Date(dateA);
+            });
+            
+            const mostRecentChat = sortedChats[0];
+            console.log("En son sohbet otomatik olarak açıldı:", mostRecentChat.title);
+            setSelectedChatDetails(mostRecentChat);
+            
+            getChatMessages(mostRecentChat.id, token)
+              .then((messages) => {
+                const formattedMessages = messages.map((msg, i) => ({
+                  id: i + 1,
+                  text: msg.message,
+                  isUser: msg.role === "student",
+                  timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+                }));
+                setMessages(formattedMessages);
+              })
+              .catch((error) => {
+                console.error("Son sohbetin mesajları yüklenirken hata:", error);
+              });
+          } else {
+            setMessages([
+              {
+                id: 1,
+                text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString(),
+                auto_tts_flag: true
+              },
+            ]);
+          }
         })
         .catch((error) => {
           console.error("Sohbetler alınırken bir hata oluştu:", error);
@@ -483,8 +598,12 @@ export default function Chat() {
             text: msg.message,
             isUser: msg.role === "student",
             timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+            auto_tts_flag: false
           }));
+          
           setMessages(formattedMessages);
+          
+          setTimeout(() => scrollToBottom(false), 150);
         })
         .catch((error) => {
           console.error("Mesajlar yüklenirken hata:", error);
@@ -497,18 +616,15 @@ export default function Chat() {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       
-      if (!lastMessage.isUser && !lastMessage.file && lastMessage.auto_tts_flag) {
+      if (!lastMessage.isUser && !lastMessage.file && lastMessage.auto_tts_flag && localStorage.getItem("auto_tts_enabled") === "true") {
         lastMessage.auto_tts_flag = false;
         
-        const isTtsEnabled = localStorage.getItem("tts_enabled") !== "false";
-        const isAutoTtsEnabled = localStorage.getItem("auto_tts_enabled") !== "false";
-        
-        if (isTtsEnabled && isAutoTtsEnabled) {
-          setTimeout(() => {
-            speakMessage(lastMessage.text);
-          }, 300);
-        }
+        setTimeout(() => {
+          speakMessage(lastMessage.text);
+        }, 300);
       }
+      
+      setTimeout(() => scrollToBottom(), 50);
     }
   }, [messages]);
 
@@ -524,6 +640,26 @@ export default function Chat() {
       }
       stopRecording();
     };
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => scrollToBottom(), 50);
+    }
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (localStorage.getItem("tts_enabled") === null) {
+      localStorage.setItem("tts_enabled", "true");
+    }
+    if (localStorage.getItem("auto_tts_enabled") === null) {
+      localStorage.setItem("auto_tts_enabled", "true");
+    }
+
+    if (messages.length === 1 && !messages[0].isUser && messages[0].text.includes("Merhaba! Ben Syllexa AI")) {
+      const welcomeMessage = messages[0];
+      welcomeMessage.auto_tts_flag = true;
+    }
   }, []);
 
   return (
@@ -681,6 +817,9 @@ export default function Chat() {
                 </div>
               </div>
             )}
+
+            {/* Invisible element to scroll to */}
+            <div ref={messagesEndRef} className="scroll-anchor" />
           </div>
 
           <form className="chat-input-area" onSubmit={handleSend}>
