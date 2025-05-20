@@ -120,6 +120,12 @@
   align-items: center;
 }
 
+.chat-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-left: 3px solid #6366f1;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+}
+
 .chat-options-wrapper {
   position: relative;
 }
@@ -223,6 +229,22 @@
   padding: 2rem;
   overflow-y: auto;
   scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Add space at the bottom for better scrolling experience */
+.chat-messages::after {
+  content: "";
+  padding-bottom: 20px;
+}
+
+/* Messages at start of chat should not be at the bottom */
+.chat-messages-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .message {
@@ -798,4 +820,11 @@
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Use a custom class for the invisible scroll anchor */
+.scroll-anchor {
+  height: 1px;
+  width: 100%;
+  margin-top: 10px;
 }
