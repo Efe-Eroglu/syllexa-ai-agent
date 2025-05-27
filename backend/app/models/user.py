@@ -20,6 +20,11 @@ class User(Base):
     is_social = Column(Boolean, default=False)
     role = Column(Enum(UserRole), default=UserRole.student)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Sosyal giriş alanları
+    google_id = Column(String, nullable=True, unique=True)
+    facebook_id = Column(String, nullable=True, unique=True)
+    github_id = Column(String, nullable=True, unique=True)
 
     # ilişkiler
     messages = relationship("ChatMessage", back_populates="user", cascade="all, delete")
