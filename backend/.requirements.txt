@@ -12,3 +12,5 @@ pypdf
 python-docx
 chromadb
 sentence-transformers
+authlib
+httpx
