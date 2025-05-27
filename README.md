@@ -40,7 +40,7 @@ Syllexa AI, disleksi rahatsızlığı olan kullanıcılar için özel olarak tas
 ### Backend
 
 - **Framework**: FastAPI
-- **Veritabanı / Database**: PostgreSQL + SQLAlchemy ORM
+- **Veritabanı / Database**: PostgreSQL
 - **AI Servisleri / AI Services**: OpenAI API, LangChain
 - **Vektör Veritabanı / Vector Database**: ChromaDB
 - **Doküman İşleme / Document Processing**: PyPDF, Python-docx

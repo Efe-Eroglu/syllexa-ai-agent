@@ -133,7 +133,10 @@ def get_chat_messages(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    return db.query(ChatMessage).filter(ChatMessage.chat_id == chat_id).all()
+    return db.query(ChatMessage)\
+        .filter(ChatMessage.chat_id == chat_id)\
+        .order_by(ChatMessage.timestamp.asc())\
+        .all()
 
 
 # 📤 [6] Dosya yükle (chat'e ait) ve RAG işlemi

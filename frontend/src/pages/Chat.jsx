@@ -39,6 +39,46 @@ let lastSpokenText = "";
 let lastSpokenTime = 0;
 const MIN_SPEAK_INTERVAL = 2000; // minimum time between identical messages in ms
 
+// Zaman damgasını düzgün formata dönüştüren yardımcı fonksiyon
+const formatTarih = (timestamp) => {
+  if (!timestamp) return new Date().toLocaleTimeString();
+  
+  try {
+    // ISO formatındaki zaman damgasını Date nesnesine dönüştür
+    const date = new Date(timestamp);
+    
+    // Geçerli bir tarih olup olmadığını kontrol et
+    if (isNaN(date.getTime())) {
+      return timestamp; // Geçersizse orijinal string'i döndür
+    }
+    
+    // Bugün için sadece saat:dakika göster
+    const bugun = new Date();
+    if (date.toDateString() === bugun.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Dün için "Dün, saat:dakika" formatı
+    const dun = new Date(bugun);
+    dun.setDate(dun.getDate() - 1);
+    if (date.toDateString() === dun.toDateString()) {
+      return `Dün, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    // Diğer günler için tam tarih ve saat
+    return date.toLocaleDateString('tr-TR', { 
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    console.error("Tarih biçimlendirme hatası:", e);
+    return timestamp; // Hata durumunda orijinal string'i döndür
+  }
+};
+
 export default function Chat() {
   const [messages, setMessages] = useState([]);
 
@@ -112,7 +152,7 @@ export default function Chat() {
                   id: i + 1,
                   text: msg.message,
                   isUser: msg.role === "student",
-                  timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+                  timestamp: formatTarih(msg.timestamp),
                 }));
                 setMessages(formattedMessages);
               })
@@ -126,7 +166,7 @@ export default function Chat() {
                 id: 1,
                 text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
                 isUser: false,
-                timestamp: new Date().toLocaleTimeString(),
+                timestamp: formatTarih(new Date()),
                 auto_tts_flag: true
               },
             ]);
@@ -169,7 +209,7 @@ export default function Chat() {
       id: messages.length + 1,
       text: inputText,
       isUser: true,
-      timestamp: new Date().toLocaleTimeString(),
+      timestamp: formatTarih(new Date()),
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -182,21 +222,19 @@ export default function Chat() {
 
       console.log("Backend'den alınan yanıt:", response);
 
-      const aiText = response.reply || "AI'dan yanıt alınamadı.";
+      const aiText = response?.reply || "AI'dan yanıt alınamadı.";
 
       const aiMessage = {
         id: messages.length + 2,
         text: aiText,
         isUser: false,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: formatTarih(new Date()),
         auto_tts_flag: true
       };
 
       setMessages((prev) => [...prev, aiMessage]);
       
       setTimeout(() => scrollToBottom(), 100);
-
-      await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
       notifyError("Mesaj gönderilemedi.");
@@ -311,7 +349,7 @@ export default function Chat() {
             id: 1,
             text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
             isUser: false,
-            timestamp: new Date().toLocaleTimeString(),
+            timestamp: formatTarih(new Date()),
             auto_tts_flag: true
           },
         ]);
@@ -383,7 +421,7 @@ export default function Chat() {
         id: messages.length + 1,
         text: `Belge yüklendi: ${file.name}`,
         isUser: true,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: formatTarih(new Date()),
         file,
         uploadedAt: new Date().toLocaleString(),
         fileSize: file.size,
@@ -414,7 +452,7 @@ export default function Chat() {
         id: messages.length + 1,
         text: finalText,
         isUser: true,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: formatTarih(new Date()),
       };
       
       setMessages((prev) => [...prev, newMessage]);
@@ -439,21 +477,19 @@ export default function Chat() {
 
       console.log("Backend'den alınan yanıt:", response);
 
-      const aiText = response.reply || "AI'dan yanıt alınamadı.";
+      const aiText = response?.reply || "AI'dan yanıt alınamadı.";
 
       const aiMessage = {
         id: messages.length + 2,
         text: aiText,
         isUser: false,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: formatTarih(new Date()),
         auto_tts_flag: true
       };
 
       setMessages((prev) => [...prev, aiMessage]);
       
       setTimeout(() => scrollToBottom(), 100);
-
-      await sendMessage(chatId, aiText, token, "ai");
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
       notifyError("Mesaj gönderilemedi.");
@@ -504,7 +540,7 @@ export default function Chat() {
               id: messages.length + 1,
               text: finalText,
               isUser: true,
-              timestamp: new Date().toLocaleTimeString(),
+              timestamp: formatTarih(new Date()),
             };
             
             setMessages((prev) => [...prev, newMessage]);
@@ -591,7 +627,7 @@ export default function Chat() {
                   id: i + 1,
                   text: msg.message,
                   isUser: msg.role === "student",
-                  timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+                  timestamp: formatTarih(msg.timestamp),
                 }));
                 setMessages(formattedMessages);
               })
@@ -607,7 +643,7 @@ export default function Chat() {
                 id: 1,
                 text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
                 isUser: false,
-                timestamp: new Date().toLocaleTimeString(),
+                timestamp: formatTarih(new Date()),
                 auto_tts_flag: true
               },
             ]);
@@ -632,7 +668,7 @@ export default function Chat() {
             id: i + 1,
             text: msg.message,
             isUser: msg.role === "student",
-            timestamp: msg.timestamp || new Date().toLocaleTimeString(),
+            timestamp: formatTarih(msg.timestamp),
             auto_tts_flag: false
           }));
           
