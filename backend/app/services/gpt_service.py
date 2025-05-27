@@ -4,12 +4,51 @@ import logging
 from openai import OpenAI  # Yeni import şekli
 from .rag_service import RAGService
 from sqlalchemy.orm import Session
+from app.models.chat import ChatMessage
+from typing import List
+import time
 
 # İstemciyi oluştur
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 # Loglama ayarları
 logging.basicConfig(level=logging.DEBUG)
+
+def get_chat_history(chat_id: int, db: Session, limit: int = 10) -> List[dict]:
+    """
+    Retrieve the most recent chat messages for context
+    
+    Args:
+        chat_id: ID of the chat
+        db: Database session
+        limit: Maximum number of previous messages to retrieve
+        
+    Returns:
+        List of message dictionaries with role and content
+    """
+    if not db or not chat_id:
+        return []
+        
+    # Get the most recent messages (excluding the current one)
+    messages = db.query(ChatMessage)\
+        .filter(ChatMessage.chat_id == chat_id)\
+        .order_by(ChatMessage.timestamp.desc())\
+        .limit(limit)\
+        .all()
+    
+    # Reverse to get chronological order
+    messages.reverse()
+    
+    # Format for OpenAI
+    formatted_messages = []
+    for msg in messages:
+        role = "user" if msg.role == "student" else "assistant"
+        formatted_messages.append({
+            "role": role,
+            "content": msg.message
+        })
+    
+    return formatted_messages
 
 def get_assistant_response(message: str, chat_id: int = None, db: Session = None) -> str:
     """
@@ -57,6 +96,21 @@ def get_assistant_response(message: str, chat_id: int = None, db: Session = None
         thread = client.beta.threads.create()
         logging.debug(f"Thread oluşturuldu: {thread.id}")
 
+        # Geçmiş mesajları alıp thread'e ekle
+        if chat_id and db:
+            chat_history = get_chat_history(chat_id, db)
+            logging.debug(f"Alınan geçmiş mesaj sayısı: {len(chat_history)}")
+            
+            # Add chat history messages to the thread
+            for hist_msg in chat_history:
+                client.beta.threads.messages.create(
+                    thread_id=thread.id,
+                    role=hist_msg["role"],
+                    content=hist_msg["content"]
+                )
+                # Small delay to ensure messages are added in order
+                time.sleep(0.1)
+
         # Thread'e geliştirilmiş kullanıcı mesajını ekle
         client.beta.threads.messages.create(
             thread_id=thread.id,
@@ -78,6 +132,9 @@ def get_assistant_response(message: str, chat_id: int = None, db: Session = None
                 run_id=run.id
             )
             logging.debug(f"Run durumu: {run.status}")
+            
+            # Add a delay between status checks
+            time.sleep(0.5)
 
         # Mesajları al
         messages = client.beta.threads.messages.list(thread_id=thread.id)

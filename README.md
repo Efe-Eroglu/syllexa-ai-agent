@@ -29,6 +29,7 @@ Syllexa AI, disleksi rahatsızlığı olan kullanıcılar için özel olarak tas
 - 💬 **Disleksi Dostu Sohbet / Dyslexia-Friendly Chat**: Konuşma ve yazım bozukluklarını düzelten özel eğitimli model
 - 📑 **Doküman İşleme / Document Processing**: PDF, DOCX ve TXT formatlarını destekler
 - 🔍 **Bağlam Tabanlı Yanıtlar / Context-Based Answers**: RAG teknolojisi ile dokümanlardan ilgili bilgileri çıkarır
+- 🧠 **Hafıza / Contextual Memory**: Her sohbet için önceki konuşmaları hatırlar ve bağlamı korur
 - 🗣️ **Çoklu İletişim Modları / Multiple Communication Modes**: Ses-ses (voice-to-voice), metin-metin (text-to-text), metin-ses (text-to-voice), ses-metin (voice-to-text)
 - 🌐 **Çoklu Dil Desteği / Multi-language Support**: Türkçe ve İngilizce
 - 🔐 **Güvenli Giriş / Secure Login**: JWT, Google ve Facebook ile giriş seçenekleri
