@@ -93,9 +93,10 @@ export const sendMessage = async (chatId, message, token, role = "student") => {
 
     console.log("Backend yanıtı:", response.data); // Backend'den gelen yanıtı logla
 
-    // Yanıtın doğru yapıda olduğunu kontrol et
-    if (response.data && response.data.message) {
-      return { reply: response.data.message }; // Yanıtı frontend'e gönder
+    // Backend yanıt yapısını kontrol et
+    if (response.data) {
+      // Yanıt bir nesne olarak geliyor, doğrudan bu nesneyi kullan
+      return { reply: response.data.message }; // message alanını alıp frontend'e gönder
     } else {
       throw new Error("Yanıt alınamadı."); // Yanıt alınamazsa hata fırlat
     }
