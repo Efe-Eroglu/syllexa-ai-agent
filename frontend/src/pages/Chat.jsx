@@ -34,15 +34,13 @@ import {
   getChatFiles,
 } from "../api/chat";
 
+// Add this at the top level, outside any component or function
+let lastSpokenText = "";
+let lastSpokenTime = 0;
+const MIN_SPEAK_INTERVAL = 2000; // minimum time between identical messages in ms
+
 export default function Chat() {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
-      isUser: false,
-      timestamp: new Date().toLocaleTimeString(),
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
 
   const [chats, setChats] = useState([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -62,6 +60,7 @@ export default function Chat() {
   const [volumeLevel, setVolumeLevel] = useState(0);
   const volumeAnalyzerRef = React.useRef(null);
   const messagesEndRef = useRef(null);
+  const spokenMessagesRef = useRef(new Set());
 
   const handleToggleOptions = (chatId) => {
     setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
@@ -205,6 +204,17 @@ export default function Chat() {
   };
 
   const speakMessage = async (text) => {
+    // Check if this exact text was spoken recently
+    const now = Date.now();
+    if (text === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
+      console.log("Preventing duplicate speech", text);
+      return;
+    }
+    
+    // Update the last spoken tracking
+    lastSpokenText = text;
+    lastSpokenTime = now;
+    
     // Get the API key
     const apiKey = localStorage.getItem("elevenlabs_api_key");
     
@@ -216,6 +226,7 @@ export default function Chat() {
     
     try {
       setIsSpeaking(true);
+      console.log("Speaking:", text);
       const audioData = await textToSpeech(text, apiKey);
       await playAudio(audioData);
     } catch (error) {
@@ -235,6 +246,17 @@ export default function Chat() {
   };
 
   const speakSpecificMessage = async (messageText) => {
+    // Check if this exact text was spoken recently
+    const now = Date.now();
+    if (messageText === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
+      console.log("Preventing duplicate specific speech", messageText);
+      return;
+    }
+    
+    // Update the last spoken tracking
+    lastSpokenText = messageText;
+    lastSpokenTime = now;
+    
     const apiKey = localStorage.getItem('elevenlabs_api_key');
     if (!apiKey) {
       notifyError("Lütfen Eleven Labs API anahtarını ayarlarda tanımlayın.");
@@ -244,6 +266,7 @@ export default function Chat() {
     
     try {
       setIsSpeaking(true);
+      console.log("Speaking specific:", messageText);
       
       const audioData = await textToSpeech(messageText, apiKey);
       await playAudio(audioData);
@@ -279,6 +302,9 @@ export default function Chat() {
 
         setChats((prevChats) => [...prevChats, newChat]);
         setSelectedChatDetails(newChat);
+        
+        // Reset spoken messages when creating a new chat
+        spokenMessagesRef.current = new Set();
         
         setMessages([
           {
@@ -556,6 +582,9 @@ export default function Chat() {
             console.log("En son sohbet otomatik olarak açıldı:", mostRecentChat.title);
             setSelectedChatDetails(mostRecentChat);
             
+            // Reset spoken messages when loading initial messages
+            spokenMessagesRef.current = new Set();
+            
             getChatMessages(mostRecentChat.id, token)
               .then((messages) => {
                 const formattedMessages = messages.map((msg, i) => ({
@@ -570,6 +599,9 @@ export default function Chat() {
                 console.error("Son sohbetin mesajları yüklenirken hata:", error);
               });
           } else {
+            // Reset spoken messages when setting welcome message
+            spokenMessagesRef.current = new Set();
+            
             setMessages([
               {
                 id: 1,
@@ -591,6 +623,9 @@ export default function Chat() {
     const token = localStorage.getItem("access_token");
 
     if (selectedChatDetails && token) {
+      // Reset spoken messages when switching chats
+      spokenMessagesRef.current = new Set();
+      
       getChatMessages(selectedChatDetails.id, token)
         .then((data) => {
           const formattedMessages = data.map((msg, i) => ({
@@ -616,8 +651,12 @@ export default function Chat() {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       
-      if (!lastMessage.isUser && !lastMessage.file && lastMessage.auto_tts_flag && localStorage.getItem("auto_tts_enabled") === "true") {
+      if (!lastMessage.isUser && !lastMessage.file && lastMessage.auto_tts_flag && 
+          localStorage.getItem("auto_tts_enabled") === "true" && 
+          !spokenMessagesRef.current.has(lastMessage.id)) {
+        
         lastMessage.auto_tts_flag = false;
+        spokenMessagesRef.current.add(lastMessage.id);
         
         setTimeout(() => {
           speakMessage(lastMessage.text);
@@ -654,11 +693,6 @@ export default function Chat() {
     }
     if (localStorage.getItem("auto_tts_enabled") === null) {
       localStorage.setItem("auto_tts_enabled", "true");
-    }
-
-    if (messages.length === 1 && !messages[0].isUser && messages[0].text.includes("Merhaba! Ben Syllexa AI")) {
-      const welcomeMessage = messages[0];
-      welcomeMessage.auto_tts_flag = true;
     }
   }, []);
 
