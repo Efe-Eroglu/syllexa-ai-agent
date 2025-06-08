@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiRobot2Line } from "react-icons/ri";
+import { FaMicrophone } from "react-icons/fa";
 import "../styles/pages/chat.css";
 import "../styles/components/tts-settings.css";
 import { startRecording, stopRecording, createVolumeAnalyzer } from "../utils/useRecorder";
@@ -577,7 +578,10 @@ export default function Chat() {
       }
       
       volumeAnalyzerRef.current = createVolumeAnalyzer((level) => {
-        setVolumeLevel(level);
+        // Adjusting the volume level to be more responsive in the UI
+        // Scale it to be more dramatic (0-100 range)
+        const scaledLevel = Math.min(Math.pow(level * 1.5, 1.2), 100);
+        setVolumeLevel(scaledLevel);
       });
       
       const speechRecognition = useEnhancedSpeechRecognition(
@@ -930,23 +934,42 @@ export default function Chat() {
               </div>
             ))}
             
-            {isRecording && recognitionText && (
-              <div className="message user recording-message">
-                <div className="message-avatar">
-                  <AiOutlineUser />
-                </div>
-                <div className="message-content">
-                  <div className="message-text">
-                    {recognitionText}
-                    <span className="recording-indicator"></span>
+            {/* Modern microphone overlay */}
+            {isRecording && (
+              <div className="mic-overlay">
+                <button className="mic-cancel-button" onClick={toggleRecording}>
+                  <FiX />
+                </button>
+                
+                <div className="mic-animation-container">
+                  <div className="mic-animation-rings">
+                    <div className="mic-ring"></div>
+                    <div className="mic-ring"></div>
+                    <div className="mic-ring"></div>
                   </div>
-                  <div className="volume-meter-container">
+                  
+                  <div className="mic-icon-container">
+                    <FaMicrophone className="mic-icon" />
+                  </div>
+                  
+                  <div className="mic-volume-waves">
                     <div 
-                      className="volume-meter" 
-                      style={{ width: `${volumeLevel}%` }}
+                      className="mic-volume-wave" 
+                      style={{ 
+                        height: `${volumeLevel}%`,
+                        opacity: volumeLevel > 10 ? 0.7 : 0.3
+                      }}
                     ></div>
                   </div>
                 </div>
+                
+                <div className="mic-text">Sizi Dinliyorum...</div>
+                
+                {recognitionText && (
+                  <div className="mic-recognition-text">
+                    {recognitionText}
+                  </div>
+                )}
               </div>
             )}
 
