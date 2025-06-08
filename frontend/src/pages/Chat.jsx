@@ -96,6 +96,7 @@ export default function Chat() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
   const [recognitionText, setRecognitionText] = useState("");
   const [recognitionInstance, setRecognitionInstance] = useState(null);
   const [volumeLevel, setVolumeLevel] = useState(0);
@@ -244,6 +245,9 @@ export default function Chat() {
     setTimeout(() => scrollToBottom(), 100);
 
     try {
+      // Yanıt üretilirken giriş alanlarını devre dışı bırak
+      setIsGeneratingResponse(true);
+      
       const response = await sendMessage(chatId, inputText, token);
 
       console.log("Backend'den alınan yanıt:", response);
@@ -264,13 +268,19 @@ export default function Chat() {
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
       notifyError("Mesaj gönderilemedi.");
+    } finally {
+      // Yanıt üretimi tamamlandığında giriş alanlarını etkinleştir
+      setIsGeneratingResponse(false);
     }
   };
 
   // Kaynak bilgilerini TTS'den çıkarmak için temizleme fonksiyonu
   const cleanTextForSpeech = (text) => {
     // "*Kullanılan kaynaklar: X.pdf*" gibi metinleri çıkar
-    return text.replace(/\*Kullanılan kaynaklar:.*\*/g, "");
+    // Alttire (_) karakterlerini anlamlı bir ifadeyle değiştir
+    return text
+      .replace(/\*Kullanılan kaynaklar:.*\*/g, "")
+      .replace(/_+/g, " ");
   };
   
   const speakMessage = async (text) => {
@@ -536,6 +546,9 @@ export default function Chat() {
     }
 
     try {
+      // Yanıt üretilirken giriş alanlarını devre dışı bırak
+      setIsGeneratingResponse(true);
+      
       const response = await sendMessage(chatId, text, token);
 
       console.log("Backend'den alınan yanıt:", response);
@@ -556,6 +569,9 @@ export default function Chat() {
     } catch (error) {
       console.error("Mesaj gönderme hatası:", error);
       notifyError("Mesaj gönderilemedi.");
+    } finally {
+      // Yanıt üretimi tamamlandığında giriş alanlarını etkinleştir
+      setIsGeneratingResponse(false);
     }
   };
 
@@ -979,19 +995,21 @@ export default function Chat() {
 
           <form className="chat-input-area" onSubmit={handleSend}>
             <div className="input-actions">
-              <label className="file-upload-button">
+              <label className={`file-upload-button ${(isSpeaking || isGeneratingResponse) ? "disabled" : ""}`}>
                 <input
                   type="file"
                   onChange={handleFileUpload}
                   style={{ display: "none" }}
+                  disabled={isSpeaking || isGeneratingResponse}
                 />
                 <FiFile />
               </label>
               <button
                 type="button"
-                className={`record-button ${isRecording ? "recording" : ""}`}
+                className={`record-button ${isRecording ? "recording" : ""} ${(isSpeaking || isGeneratingResponse) ? "disabled" : ""}`}
                 onClick={toggleRecording}
                 title={isRecording ? "Kaydı Durdur" : "Sesli Mesaj Gönder"}
+                disabled={isSpeaking || isGeneratingResponse}
               >
                 <FiMic />
               </button>
@@ -1001,11 +1019,16 @@ export default function Chat() {
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Syllexa AI'ya bir şeyler sor..."
+              placeholder={isSpeaking ? "Ses çalınıyor..." : isGeneratingResponse ? "Yanıt üretiliyor..." : "Syllexa AI'ya bir şeyler sor..."}
               className="chat-input"
+              disabled={isSpeaking || isGeneratingResponse}
             />
 
-            <button type="submit" className="send-button">
+            <button 
+              type="submit" 
+              className={`send-button ${(isSpeaking || isGeneratingResponse) ? "disabled" : ""}`}
+              disabled={isSpeaking || isGeneratingResponse}
+            >
               <FiSend />
             </button>
           </form>

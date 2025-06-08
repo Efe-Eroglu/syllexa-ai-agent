@@ -998,3 +998,36 @@
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.05);
 }
+
+/* Styles for disabled input controls during speech or response generation */
+.file-upload-button.disabled,
+.record-button.disabled,
+.send-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.chat-input:disabled {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Add a subtle loading indicator for the input when generating response */
+@keyframes placeholderPulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.chat-input:disabled::placeholder {
+  animation: placeholderPulse 1.5s infinite;
+  color: #8b5cf6;
+}

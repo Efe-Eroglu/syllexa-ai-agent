@@ -2,8 +2,8 @@
  * Text-to-Speech module using ElevenLabs API - Türkçe için optimize edilmiş
  */
 
-// Türkçe konuşma için önerilen varsayılan ElevenLabs sesi (Lily)
-const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel - Çok dilli ses
+// Türkçe konuşma için önerilen varsayılan ElevenLabs sesi
+const DEFAULT_VOICE_ID = 'UKn8d228qbbMa2f9ezXL'; // Kullanıcının belirttiği artist sesi
 const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 
 /**
@@ -19,18 +19,25 @@ export const textToSpeech = async (text, apiKey) => {
   // Kullanıcı ayarlarını al
   const stabilityValue = parseFloat(localStorage.getItem('tts_stability') || '0.65');
   const clarityValue = parseFloat(localStorage.getItem('tts_clarity') || '0.7');
+  
+  // Kullanıcının seçtiği ses ID'sini al, yoksa varsayılanı kullan
+  const voiceId = localStorage.getItem('elevenlabs_voice_id') || DEFAULT_VOICE_ID;
+  
+  // Metindeki _ karakterlerini anlamlı bir ifadeyle değiştir
+  const cleanedText = text.replace(/_+/g, '  ');
 
   // Türkçe test edilen ayarlar
   // Eğer metin soru içeriyorsa net ama doğal bir konuşma tonu kullan
-  const isQuestion = text.includes('?');
+  const isQuestion = cleanedText.includes('?');
   const style = isQuestion ? 0.35 : 0.4;
 
   try {
-    console.log('ElevenLabs API isteği gönderiliyor...', DEFAULT_VOICE_ID);
+    console.log('ElevenLabs API isteği gönderiliyor...', voiceId);
+    console.log('Temizlenmiş metin:', cleanedText);
     
     // Türkçe dili için optimize edilmiş API isteği
     const response = await fetch(
-      `${ELEVENLABS_API_URL}/text-to-speech/${DEFAULT_VOICE_ID}`,
+      `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`,
       {
         method: 'POST',
         headers: {
@@ -39,7 +46,7 @@ export const textToSpeech = async (text, apiKey) => {
           'Accept-Language': 'tr-TR'
         },
         body: JSON.stringify({
-          text,
+          text: cleanedText,
           model_id: 'eleven_multilingual_v2', // Çok dilli model seçimi
           voice_settings: {
             stability: stabilityValue,    // Kullanıcı ayarından alınır

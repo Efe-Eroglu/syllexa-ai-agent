@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSave, FiInfo, FiSliders, FiVolume2 } from 'react-icons/fi';
+import { FiSave, FiInfo, FiSliders, FiVolume2, FiMic } from 'react-icons/fi';
 import { notifySuccess, notifyError } from '../utils/toast';
 
 const TTSSettings = ({ onClose }) => {
@@ -10,6 +10,7 @@ const TTSSettings = ({ onClose }) => {
   const [speechRate, setSpeechRate] = useState(1.0);
   const [stability, setStability] = useState(0.65);
   const [clarity, setClarity] = useState(0.7);
+  const [voiceId, setVoiceId] = useState('UKn8d228qbbMa2f9ezXL');
 
   useEffect(() => {
     // Load saved settings
@@ -17,6 +18,7 @@ const TTSSettings = ({ onClose }) => {
     const savedSpeechRate = localStorage.getItem('speech_rate');
     const savedStability = localStorage.getItem('tts_stability');
     const savedClarity = localStorage.getItem('tts_clarity');
+    const savedVoiceId = localStorage.getItem('elevenlabs_voice_id');
     
     // Always set TTS enabled by default
     localStorage.setItem('tts_enabled', 'true');
@@ -37,6 +39,13 @@ const TTSSettings = ({ onClose }) => {
     if (savedClarity !== null) {
       setClarity(parseFloat(savedClarity));
     }
+    
+    if (savedVoiceId) {
+      setVoiceId(savedVoiceId);
+    } else {
+      // Kullanıcının belirttiği varsayılan ses ID'sini kaydet
+      localStorage.setItem('elevenlabs_voice_id', 'UKn8d228qbbMa2f9ezXL');
+    }
   }, []);
 
   const saveSettings = () => {
@@ -50,6 +59,7 @@ const TTSSettings = ({ onClose }) => {
       localStorage.setItem('speech_rate', speechRate.toString());
       localStorage.setItem('tts_stability', stability.toString());
       localStorage.setItem('tts_clarity', clarity.toString());
+      localStorage.setItem('elevenlabs_voice_id', voiceId);
       
       notifySuccess('Ses ayarları kaydedildi');
       if (onClose) onClose();
@@ -115,6 +125,24 @@ const TTSSettings = ({ onClose }) => {
           </a>
         </div>
         <small>API anahtarınızı almak için ElevenLabs hesabınızı ziyaret edin</small>
+      </div>
+      
+      <div className="setting-group">
+        <label htmlFor="voice-id">
+          <div className="feature-label">
+            <FiMic className="feature-icon" />
+            <span>Ses Kimliği (Voice ID)</span>
+          </div>
+        </label>
+        <input
+          type="text"
+          id="voice-id"
+          value={voiceId}
+          onChange={(e) => setVoiceId(e.target.value)}
+          placeholder="ElevenLabs ses kimliğini girin"
+          className="setting-input"
+        />
+        <small>Artist sesini kullanmak için: UKn8d228qbbMa2f9ezXL</small>
       </div>
       
       <div className="advanced-toggle" onClick={() => setShowAdvanced(!showAdvanced)}>
