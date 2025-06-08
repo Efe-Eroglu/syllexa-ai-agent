@@ -198,11 +198,36 @@ export default function Chat() {
     if (inputText.trim() === "") return;
 
     const token = localStorage.getItem("access_token");
-    const chatId = selectedChatDetails?.id || chats[0]?.id;
+    let chatId = selectedChatDetails?.id || chats[0]?.id;
 
+    // Eğer aktif bir sohbet yoksa, otomatik olarak yeni bir sohbet oluştur
     if (!chatId) {
-      notifyError("Lütfen önce bir sohbet seçin.");
-      return;
+      try {
+        console.log("Aktif sohbet bulunamadı, yeni sohbet oluşturuluyor...");
+        const chatTitle = `Yeni Sohbet ${chats.length + 1}`;
+        const newChat = await createChat(chatTitle, token);
+        
+        setChats((prevChats) => [...prevChats, newChat]);
+        setSelectedChatDetails(newChat);
+        chatId = newChat.id;
+        
+        console.log("Yeni sohbet otomatik olarak oluşturuldu:", newChat);
+        
+        // Karşılama mesajı
+        const welcomeMessage = {
+          id: 1,
+          text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
+          isUser: false,
+          timestamp: formatTarih(new Date()),
+        };
+        
+        setMessages([welcomeMessage]);
+        spokenMessagesRef.current = new Set();
+      } catch (error) {
+        console.error("Otomatik sohbet oluşturulurken hata:", error);
+        notifyError("Sohbet oluşturulamadı. Lütfen tekrar deneyin.");
+        return;
+      }
     }
 
     const newMessage = {
@@ -241,16 +266,25 @@ export default function Chat() {
     }
   };
 
+  // Kaynak bilgilerini TTS'den çıkarmak için temizleme fonksiyonu
+  const cleanTextForSpeech = (text) => {
+    // "*Kullanılan kaynaklar: X.pdf*" gibi metinleri çıkar
+    return text.replace(/\*Kullanılan kaynaklar:.*\*/g, "");
+  };
+  
   const speakMessage = async (text) => {
+    // Metni temizle - kaynak bilgilerini çıkar
+    const cleanedText = cleanTextForSpeech(text);
+    
     // Check if this exact text was spoken recently
     const now = Date.now();
-    if (text === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
-      console.log("Preventing duplicate speech", text);
+    if (cleanedText === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
+      console.log("Preventing duplicate speech", cleanedText);
       return;
     }
     
     // Update the last spoken tracking
-    lastSpokenText = text;
+    lastSpokenText = cleanedText;
     lastSpokenTime = now;
     
     // Get the API key
@@ -264,8 +298,8 @@ export default function Chat() {
     
     try {
       setIsSpeaking(true);
-      console.log("Speaking:", text);
-      const audioData = await textToSpeech(text, apiKey);
+      console.log("Speaking:", cleanedText);
+      const audioData = await textToSpeech(cleanedText, apiKey);
       await playAudio(audioData);
     } catch (error) {
       console.error("Ses sentezleme hatası:", error);
@@ -284,15 +318,18 @@ export default function Chat() {
   };
 
   const speakSpecificMessage = async (messageText) => {
+    // Metni temizle - kaynak bilgilerini çıkar
+    const cleanedText = cleanTextForSpeech(messageText);
+    
     // Check if this exact text was spoken recently
     const now = Date.now();
-    if (messageText === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
-      console.log("Preventing duplicate specific speech", messageText);
+    if (cleanedText === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
+      console.log("Preventing duplicate specific speech", cleanedText);
       return;
     }
     
     // Update the last spoken tracking
-    lastSpokenText = messageText;
+    lastSpokenText = cleanedText;
     lastSpokenTime = now;
     
     const apiKey = localStorage.getItem('elevenlabs_api_key');
@@ -304,9 +341,9 @@ export default function Chat() {
     
     try {
       setIsSpeaking(true);
-      console.log("Speaking specific:", messageText);
+      console.log("Speaking specific:", cleanedText);
       
-      const audioData = await textToSpeech(messageText, apiKey);
+      const audioData = await textToSpeech(cleanedText, apiKey);
       await playAudio(audioData);
       
     } catch (error) {
@@ -465,11 +502,36 @@ export default function Chat() {
 
   const sendMessageToServer = async (text) => {
     const token = localStorage.getItem("access_token");
-    const chatId = selectedChatDetails?.id || chats[0]?.id;
+    let chatId = selectedChatDetails?.id || chats[0]?.id;
 
+    // Eğer aktif bir sohbet yoksa, otomatik olarak yeni bir sohbet oluştur
     if (!chatId) {
-      notifyError("Lütfen önce bir sohbet seçin.");
-      return;
+      try {
+        console.log("Aktif sohbet bulunamadı, yeni sohbet oluşturuluyor...");
+        const chatTitle = `Yeni Sohbet ${chats.length + 1}`;
+        const newChat = await createChat(chatTitle, token);
+        
+        setChats((prevChats) => [...prevChats, newChat]);
+        setSelectedChatDetails(newChat);
+        chatId = newChat.id;
+        
+        console.log("Yeni sohbet otomatik olarak oluşturuldu:", newChat);
+        
+        // Karşılama mesajı
+        const welcomeMessage = {
+          id: 1,
+          text: "Merhaba! Ben Syllexa AI, disleksi dostu asistanın. Nasıl yardımcı olabilirim?",
+          isUser: false,
+          timestamp: formatTarih(new Date()),
+        };
+        
+        setMessages([welcomeMessage]);
+        spokenMessagesRef.current = new Set();
+      } catch (error) {
+        console.error("Otomatik sohbet oluşturulurken hata:", error);
+        notifyError("Sohbet oluşturulamadı. Lütfen tekrar deneyin.");
+        return;
+      }
     }
 
     try {
