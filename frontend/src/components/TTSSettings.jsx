@@ -73,76 +73,79 @@ const TTSSettings = ({ onClose }) => {
     <div className="tts-settings">
       <h3>Türkçe Ses Sentezi Ayarları</h3>
       
-      <div className="setting-group">
-        <label htmlFor="tts-toggle">Sesli Yanıtlar (Aktif)</label>
-        <div className="toggle-switch">
-          <input 
-            type="checkbox" 
-            id="tts-toggle" 
-            checked={true}
-            disabled={true}
-          />
-          <span className="toggle-slider"></span>
-        </div>
-      </div>
-      
-      <div className="setting-group">
-        <label htmlFor="auto-tts-toggle">
-          <div className="feature-label">
-            <FiVolume2 className="feature-icon" />
-            <span>Otomatik Seslendirme (Aktif)</span>
+      {/* Yatay düzen için grid container */}
+      <div className="settings-container">
+        <div className="setting-group">
+          <label htmlFor="tts-toggle">Sesli Yanıtlar (Aktif)</label>
+          <div className="toggle-switch">
+            <input 
+              type="checkbox" 
+              id="tts-toggle" 
+              checked={true}
+              disabled={true}
+            />
+            <span className="toggle-slider"></span>
           </div>
-          <small>Mesajlar geldiğinde otomatik seslendirilir</small>
-        </label>
-        <div className="toggle-switch">
-          <input 
-            type="checkbox" 
-            id="auto-tts-toggle" 
-            checked={true}
-            disabled={true}
-          />
-          <span className="toggle-slider"></span>
         </div>
-      </div>
-      
-      <div className="setting-group">
-        <label htmlFor="api-key">ElevenLabs API Anahtarı</label>
-        <div className="input-with-info">
+        
+        <div className="setting-group">
+          <label htmlFor="auto-tts-toggle">
+            <div className="feature-label">
+              <FiVolume2 className="feature-icon" />
+              <span>Otomatik Seslendirme (Aktif)</span>
+            </div>
+            <small>Mesajlar geldiğinde otomatik seslendirilir</small>
+          </label>
+          <div className="toggle-switch">
+            <input 
+              type="checkbox" 
+              id="auto-tts-toggle" 
+              checked={true}
+              disabled={true}
+            />
+            <span className="toggle-slider"></span>
+          </div>
+        </div>
+        
+        <div className="setting-group">
+          <label htmlFor="api-key">ElevenLabs API Anahtarı</label>
+          <div className="input-with-info">
+            <input
+              type="password"
+              id="api-key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="ElevenLabs API anahtarınızı girin"
+            />
+            <a 
+              href="https://elevenlabs.io/speech-synthesis" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="info-link"
+            >
+              <FiInfo />
+            </a>
+          </div>
+          <small>API anahtarınızı almak için ElevenLabs hesabınızı ziyaret edin</small>
+        </div>
+        
+        <div className="setting-group">
+          <label htmlFor="voice-id">
+            <div className="feature-label">
+              <FiMic className="feature-icon" />
+              <span>Ses Kimliği (Voice ID)</span>
+            </div>
+          </label>
           <input
-            type="password"
-            id="api-key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="ElevenLabs API anahtarınızı girin"
+            type="text"
+            id="voice-id"
+            value={voiceId}
+            onChange={(e) => setVoiceId(e.target.value)}
+            placeholder="ElevenLabs ses kimliğini girin"
+            className="setting-input"
           />
-          <a 
-            href="https://elevenlabs.io/speech-synthesis" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="info-link"
-          >
-            <FiInfo />
-          </a>
+          <small>Artist sesini kullanmak için: UKn8d228qbbMa2f9ezXL</small>
         </div>
-        <small>API anahtarınızı almak için ElevenLabs hesabınızı ziyaret edin</small>
-      </div>
-      
-      <div className="setting-group">
-        <label htmlFor="voice-id">
-          <div className="feature-label">
-            <FiMic className="feature-icon" />
-            <span>Ses Kimliği (Voice ID)</span>
-          </div>
-        </label>
-        <input
-          type="text"
-          id="voice-id"
-          value={voiceId}
-          onChange={(e) => setVoiceId(e.target.value)}
-          placeholder="ElevenLabs ses kimliğini girin"
-          className="setting-input"
-        />
-        <small>Artist sesini kullanmak için: UKn8d228qbbMa2f9ezXL</small>
       </div>
       
       <div className="advanced-toggle" onClick={() => setShowAdvanced(!showAdvanced)}>

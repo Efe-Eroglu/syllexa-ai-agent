@@ -587,6 +587,7 @@
   justify-content: center;
   align-items: center;
   z-index: 999;
+  overflow: hidden;
 }
 
 /* Modal kutusu */
@@ -595,10 +596,11 @@
   padding: 2rem;
   border-radius: 1.25rem;
   width: 90%;
-  max-width: 420px;
+  max-width: 620px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   color: #e2e8f0;
   animation: fadeIn 0.2s ease-in-out;
+  overflow: hidden;
 }
 
 /* Başlık ve kapatma */
