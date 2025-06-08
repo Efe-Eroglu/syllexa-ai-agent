@@ -40,7 +40,5 @@ app.include_router(chat_router, prefix="/api", tags=["Chat"])
 
 @app.on_event("startup")
 def startup_event():
-    # Tüm tabloları sil ve yeniden oluştur (GELİŞTİRME AŞAMASINDA)
-    # ÖNEMLİ: Bu satır geliştirme bittikten sonra silinmelidir
-    Base.metadata.drop_all(bind=engine)
+    # Sadece eksik tabloları oluştur, var olanları korur
     Base.metadata.create_all(bind=engine)
