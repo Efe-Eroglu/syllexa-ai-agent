@@ -10,6 +10,7 @@ import {
   FiLogOut,
   FiX,
   FiVolume2,
+  FiSun,
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiRobot2Line } from "react-icons/ri";
@@ -34,6 +35,8 @@ import {
   uploadFile,
   getChatFiles,
 } from "../api/chat";
+import ThemeSettings from "../components/ThemeSettings";
+import "../styles/themes.css";
 
 // Add this at the top level, outside any component or function
 let lastSpokenText = "";
@@ -80,7 +83,7 @@ const formatTarih = (timestamp) => {
   }
 };
 
-export default function Chat() {
+const Chat = () => {
   const [messages, setMessages] = useState([]);
 
   const [chats, setChats] = useState([]);
@@ -103,6 +106,10 @@ export default function Chat() {
   const volumeAnalyzerRef = React.useRef(null);
   const messagesEndRef = useRef(null);
   const spokenMessagesRef = useRef(new Set());
+  const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light';
+  });
 
   const handleToggleOptions = (chatId) => {
     setSelectedChatOptions((prev) => (prev === chatId ? null : chatId));
@@ -814,16 +821,46 @@ export default function Chat() {
     }
   }, []);
 
+  // Theme change handler
+  const handleThemeChange = (theme) => {
+    setCurrentTheme(theme);
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  };
+
+  // Initialize theme on component mount
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+  }, []);
+
   return (
     <>
       <div className="chat-container">
         <div className={`side-menu ${isMenuOpen ? "open" : ""}`}>
           <div className="menu-header">
             <h3>Sohbetler</h3>
-            <button className="new-chat-button" onClick={handleNewChat}>
-              <FiPlus />
-            </button>
+            <div className="menu-actions">
+              <button 
+                className="theme-toggle-button" 
+                onClick={() => setShowThemeSettings(!showThemeSettings)}
+                title="Tema Ayarları"
+              >
+                <FiSun />
+              </button>
+              <button className="new-chat-button" onClick={handleNewChat}>
+                <FiPlus />
+              </button>
+            </div>
           </div>
+
+          {showThemeSettings && (
+            <div className="theme-settings-container">
+              <ThemeSettings 
+                currentTheme={currentTheme} 
+                onThemeChange={handleThemeChange} 
+              />
+            </div>
+          )}
 
           <div className="chat-list">
             {chats.map((chat) => (
@@ -1180,4 +1217,6 @@ export default function Chat() {
       )}
     </>
   );
-}
+};
+
+export default Chat;
