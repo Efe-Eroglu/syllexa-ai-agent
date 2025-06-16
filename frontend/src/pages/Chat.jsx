@@ -950,6 +950,22 @@ export default function Chat() {
               </div>
             ))}
             
+            {/* Loading Animation */}
+            {isGeneratingResponse && (
+              <div className="message ai">
+                <div className="message-avatar">
+                  <RiRobot2Line />
+                </div>
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <div className="typing-dot"></div>
+                    <div className="typing-dot"></div>
+                    <div className="typing-dot"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Modern microphone overlay */}
             {isRecording && (
               <div className="mic-overlay">
